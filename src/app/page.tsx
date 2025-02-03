@@ -1,3 +1,24 @@
+"use client";
+
+import React, { useState } from "react";
+import SpeechButton from "@/components/SpeechButton";
+import Questions from "@/components/Questions";
+
 export default function Home() {
-  return <div>Home Page</div>;
+  const [currentQuestion, setCurrentQuestion] = useState<string | null>(null);
+
+  return (
+    <div className="max-w-4xl mx-auto p-8 bg-gray-900 text-white rounded-lg shadow-lg">
+      <h1 className="text-3xl font-semibold text-center mb-6">
+        Ucz się React.js z AI
+      </h1>
+      <Questions onQuestionChange={setCurrentQuestion} />
+      {currentQuestion && (
+        <div className="mt-6 bg-gray-800 p-4 rounded-lg">
+          <h3 className="text-xl mb-4">Pytanie: {currentQuestion}</h3>
+          <SpeechButton question={currentQuestion} />
+        </div>
+      )}
+    </div>
+  );
 }

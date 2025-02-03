@@ -1,6 +1,7 @@
+import "regenerator-runtime/runtime";
 import {
   ClerkProvider,
-  SignInButton,
+  RedirectToSignIn,
   SignedIn,
   SignedOut,
   UserButton,
@@ -15,18 +16,16 @@ export default function RootLayout({
   return (
     <ClerkProvider>
       <html lang="en">
-        <body>
-          <header>
+        <body className="bg-gray-900 text-white min-h-screen flex flex-col">
+          <header className="flex justify-between items-center p-4 bg-gray-800 shadow-md">
             <SignedOut>
-              <SignInButton />
+              <RedirectToSignIn />
             </SignedOut>
-
             <SignedIn>
               <UserButton />
             </SignedIn>
           </header>
-
-          <main>{children}</main>
+          <main className="flex-grow">{children}</main>
         </body>
       </html>
     </ClerkProvider>

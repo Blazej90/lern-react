@@ -10,15 +10,21 @@
   },
   "dependencies": {
     "@clerk/nextjs": "^6.10.4",
+    "axios": "^1.7.9",
     "next": "^15.0.2",
+    "openai": "^4.82.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-speech-recognition": "^3.10.0"
+    "react-speech-recognition": "^3.10.0",
+    "regenerator-runtime": "^0.14.1"
   },
   "devDependencies": {
+    "@babel/plugin-transform-runtime": "^7.25.9",
+    "@babel/preset-env": "^7.26.7",
     "@types/node": "^22.8.6",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
+    "@types/react-speech-recognition": "^3.9.6",
     "autoprefixer": "^10.4.20",
     "eslint": "^9.13.0",
     "eslint-config-next": "^15.0.2",
