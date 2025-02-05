@@ -1,14 +1,19 @@
 import "regenerator-runtime/runtime";
 import {
   ClerkProvider,
-  RedirectToSignIn,
   SignedIn,
   SignedOut,
+  RedirectToSignIn,
   UserButton,
 } from "@clerk/nextjs";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ModeToggle } from "@/components/mode-toggle";
 import "./globals.css";
+
+export const metadata = {
+  title: "Learn React",
+  description: "Learn to React with AI",
+};
 
 export default function RootLayout({
   children,
@@ -16,31 +21,32 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <ClerkProvider>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <head></head>
-          <body className="min-h-screen flex flex-col">
+    <ClerkProvider>
+      <html lang="en" suppressHydrationWarning>
+        <body className="min-h-screen flex flex-col">
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
             <header className="flex justify-between items-center p-4">
+              <SignedIn>
+                <div className="user-button">
+                  <UserButton />
+                </div>
+              </SignedIn>
               <SignedOut>
                 <RedirectToSignIn />
               </SignedOut>
-              <SignedIn>
-                <UserButton />
-              </SignedIn>
               <div className="ml-auto">
                 <ModeToggle />
               </div>
             </header>
             <main className="flex-grow">{children}</main>
-          </body>
-        </ThemeProvider>
-      </ClerkProvider>
-    </html>
+          </ThemeProvider>
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }
