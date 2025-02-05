@@ -14,15 +14,15 @@ const ResultsList: React.FC<{
     <ul className="space-y-4">
       {uniqueResults.map((result, index) => (
         <li key={index}>
-          <div className="text-white">{result.text}</div>
-          <div className="text-sm text-gray-400">
+          <div className="text-black dark:text-white">{result.text}</div>
+          <div className="text-sm text-gray-600 dark:text-gray-400">
             Czas odpowiedzi: {formatTime(result.time)}
           </div>
         </li>
       ))}
       {interimResult && (
-        <li className="p-4 bg-gray-800 rounded-lg shadow-md">
-          <div className="text-white">{interimResult}</div>
+        <li>
+          <div className="text-black dark:text-white">{interimResult}</div>
         </li>
       )}
     </ul>

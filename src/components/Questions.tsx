@@ -45,7 +45,6 @@ const QuestionPicker: React.FC<{
 
   return (
     <div className="flex flex-col items-center justify-center space-y-4">
-      <h2 className="text-3xl font-bold text-center">Wylosuj pytanie</h2>
       <Button onClick={getRandomQuestion}>Losuj pytanie</Button>
     </div>
   );

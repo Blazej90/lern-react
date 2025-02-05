@@ -11,6 +11,7 @@ import ResultsList from "@/components/ResultList";
 import axios from "axios";
 import "regenerator-runtime/runtime";
 import AIResponse from "@/components/AIResponse";
+import { Card, CardContent } from "@/components/ui/card";
 
 interface SpeechButtonProps {
   question: string;
@@ -114,19 +115,21 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({ question }) => {
   }
 
   return (
-    <div className="flex flex-col items-center space-y-6 p-6 bg-gray-800 rounded-lg shadow-md">
-      <RecordingTimer isRecording={listening} recordingTime={recordingTime} />
-      <MicrophoneButton
-        isRecording={listening}
-        onClick={listening ? handleStopListening : handleStartListening}
-      />
-      <ResultsList
-        results={results}
-        interimResult={listening ? transcript : null}
-      />
-      <ClearButton onClear={handleClear} />
-      <AIResponse feedback={feedback} />
-    </div>
+    <Card>
+      <CardContent className="flex flex-col items-center space-y-6 p-6">
+        <RecordingTimer isRecording={listening} recordingTime={recordingTime} />
+        <MicrophoneButton
+          isRecording={listening}
+          onClick={listening ? handleStopListening : handleStartListening}
+        />
+        <ResultsList
+          results={results}
+          interimResult={listening ? transcript : null}
+        />
+        <ClearButton onClear={handleClear} />
+        <AIResponse feedback={feedback} />
+      </CardContent>
+    </Card>
   );
 };
 
