@@ -13,7 +13,7 @@ const ResultsList: React.FC<{
   return (
     <ul className="space-y-4">
       {uniqueResults.map((result, index) => (
-        <li key={index} className="p-4 bg-gray-800 rounded-lg shadow-md">
+        <li key={index}>
           <div className="text-white">{result.text}</div>
           <div className="text-sm text-gray-400">
             Czas odpowiedzi: {formatTime(result.time)}
