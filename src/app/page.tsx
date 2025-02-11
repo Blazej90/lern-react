@@ -8,6 +8,7 @@ import { useTheme } from "next-themes";
 
 export default function Home() {
   const [currentQuestion, setCurrentQuestion] = useState<string | null>(null);
+  const [recordingTime, setRecordingTime] = useState<number>(0);
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
@@ -25,11 +26,19 @@ export default function Home() {
         Ucz się React.js z AI
       </h1>
 
-      <Questions onQuestionChange={setCurrentQuestion} />
+      <Questions
+        onQuestionChange={setCurrentQuestion}
+        setRecordingTime={setRecordingTime}
+      />
+
       {currentQuestion && (
         <div className="mt-6 p-4 rounded-lg">
           <h3 className="text-xl mb-4">Pytanie: {currentQuestion}</h3>
-          <SpeechButton question={currentQuestion} />
+          <SpeechButton
+            question={currentQuestion}
+            recordingTime={recordingTime}
+            setRecordingTime={setRecordingTime}
+          />
         </div>
       )}
     </div>

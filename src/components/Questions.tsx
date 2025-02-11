@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 
 const QuestionPicker: React.FC<{
   onQuestionChange: (question: string) => void;
-}> = ({ onQuestionChange }) => {
+  setRecordingTime: React.Dispatch<React.SetStateAction<number>>;
+}> = ({ onQuestionChange, setRecordingTime }) => {
   const questions = [
     "Jak działa useState i kiedy go używamy?",
     "Co to jest virtual DOM i dlaczego jest używany w React?",
@@ -41,6 +42,8 @@ const QuestionPicker: React.FC<{
     const randomIndex = Math.floor(Math.random() * questions.length);
     const question = questions[randomIndex];
     onQuestionChange(question);
+
+    setRecordingTime(0);
   };
 
   return (

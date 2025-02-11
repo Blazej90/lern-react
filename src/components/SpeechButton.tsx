@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import SpeechRecognition, {
   useSpeechRecognition,
 } from "react-speech-recognition";
@@ -15,10 +15,15 @@ import { Card, CardContent } from "@/components/ui/card";
 
 interface SpeechButtonProps {
   question: string;
+  recordingTime: number;
+  setRecordingTime: React.Dispatch<React.SetStateAction<number>>;
 }
 
-const SpeechButton: React.FC<SpeechButtonProps> = ({ question }) => {
-  const [recordingTime, setRecordingTime] = useState<number>(0);
+const SpeechButton: React.FC<SpeechButtonProps> = ({
+  question,
+  recordingTime,
+  setRecordingTime,
+}) => {
   const [results, setResults] = useState<{ text: string; time: number }[]>([]);
   const [isClient, setIsClient] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -46,7 +51,7 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({ question }) => {
     return () => {
       if (timer) clearInterval(timer);
     };
-  }, [listening]);
+  }, [listening, setRecordingTime]);
 
   useEffect(() => {
     if (!listening && transcript.trim()) {
@@ -58,7 +63,7 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({ question }) => {
       resetTranscript();
       getAIResponse(transcript);
     }
-  }, [listening, transcript, resetTranscript]);
+  }, [listening, transcript, resetTranscript, recordingTime]);
 
   const handleStartListening = () => {
     if (!listening) {
@@ -76,6 +81,7 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({ question }) => {
     setResults([]);
     setFeedback(null);
     resetTranscript();
+    setRecordingTime(0);
   };
 
   const getAIResponse = async (userInput: string) => {
