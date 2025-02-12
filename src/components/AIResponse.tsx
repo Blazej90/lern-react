@@ -7,6 +7,7 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const AIResponse: React.FC<{
   feedback: string | null;
@@ -20,9 +21,11 @@ const AIResponse: React.FC<{
           <DrawerTitle className="text-3xl font-bold">Feedback AI</DrawerTitle>
         </DrawerHeader>
         <div className="p-4 rounded-lg">
-          <p className="text-xl leading-relaxed">
-            {feedback || "Brak odpowiedzi od AI."}
-          </p>
+          <ScrollArea className="max-h-96 overflow-y-auto p-4 rounded-lg">
+            <p className="text-xl leading-relaxed">
+              {feedback || "Brak odpowiedzi od AI."}
+            </p>
+          </ScrollArea>
         </div>
         <div className="flex justify-center mt-6">
           <Button variant="outline" onClick={() => setIsOpen(false)}>
