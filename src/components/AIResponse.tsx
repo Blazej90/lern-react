@@ -1,11 +1,36 @@
-const AIResponse: React.FC<{ feedback: string | null }> = ({ feedback }) => {
-  if (!feedback) return null;
+import React from "react";
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
+import { Button } from "@/components/ui/button";
 
+const AIResponse: React.FC<{
+  feedback: string | null;
+  isOpen: boolean;
+  setIsOpen: (open: boolean) => void;
+}> = ({ feedback, isOpen, setIsOpen }) => {
   return (
-    <div className="mt-4 p-4 border border-gray-300 rounded bg-gray-100">
-      <strong className="text-lg font-semibold">Feedback AI:</strong>
-      <p className="mt-2 text-gray-700">{feedback}</p>
-    </div>
+    <Drawer open={isOpen} onOpenChange={setIsOpen}>
+      <DrawerContent className="max-w-2xl mx-auto rounded-t-lg transition-transform duration-900 ease-in-out p-8">
+        <DrawerHeader className="text-center">
+          <DrawerTitle className="text-3xl font-bold">Feedback AI</DrawerTitle>
+        </DrawerHeader>
+        <div className="p-4 rounded-lg">
+          <p className="text-xl leading-relaxed">
+            {feedback || "Brak odpowiedzi od AI."}
+          </p>
+        </div>
+        <div className="flex justify-center mt-6">
+          <Button variant="outline" onClick={() => setIsOpen(false)}>
+            Zamknij
+          </Button>
+        </div>
+      </DrawerContent>
+    </Drawer>
   );
 };
 

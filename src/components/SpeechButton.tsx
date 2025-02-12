@@ -27,6 +27,7 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
   const [results, setResults] = useState<{ text: string; time: number }[]>([]);
   const [isClient, setIsClient] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   const {
     transcript,
@@ -74,6 +75,7 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
   const handleStopListening = () => {
     if (listening) {
       SpeechRecognition.stopListening();
+      setIsDrawerOpen(true);
     }
   };
 
@@ -133,7 +135,11 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
           interimResult={listening ? transcript : null}
         />
         <ClearButton onClear={handleClear} />
-        <AIResponse feedback={feedback} />
+        <AIResponse
+          feedback={feedback}
+          isOpen={isDrawerOpen}
+          setIsOpen={setIsDrawerOpen}
+        />
       </CardContent>
     </Card>
   );
