@@ -2,13 +2,13 @@ import React, { useEffect, useState } from "react";
 import SpeechRecognition, {
   useSpeechRecognition,
 } from "react-speech-recognition";
-import ClearButton from "@/components/ClearButton";
-import RecordingTimer from "@/components/RecordingTimer";
-import MicrophoneButton from "@/components/MicrophoneButton";
-import ResultsList from "@/components/ResultList";
+import ClearButton from "@/components/clear-button";
+import RecordingTimer from "@/components/recording-timer";
+import MicrophoneButton from "@/components/microphone-button";
+import ResultsList from "@/components/result-list";
 import axios from "axios";
 import "regenerator-runtime/runtime";
-import AIResponse from "@/components/AIResponse";
+import AIResponse from "@/components/ai-response";
 import { Card, CardContent } from "@/components/ui/card";
 
 interface SpeechButtonProps {
