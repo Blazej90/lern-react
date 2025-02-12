@@ -43,7 +43,7 @@ export default function RootLayout({
                 <ModeToggle />
               </div>
             </header>
-            <main className="flex-grow">{children}</main>
+            <main className="flex-grow w-full">{children}</main>
           </ThemeProvider>
         </body>
       </html>
