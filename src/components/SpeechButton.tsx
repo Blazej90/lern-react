@@ -1,5 +1,3 @@
-"use client";
-
 import React, { useEffect, useState } from "react";
 import SpeechRecognition, {
   useSpeechRecognition,
@@ -28,6 +26,7 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
   const [isClient, setIsClient] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const {
     transcript,
@@ -84,6 +83,7 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
     setFeedback(null);
     resetTranscript();
     setRecordingTime(0);
+    setIsLoading(false);
   };
 
   const getAIResponse = async (userInput: string) => {
@@ -94,6 +94,7 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
     }
 
     try {
+      setIsLoading(true);
       const response = await axios.post("/api/openai", {
         userAnswer: userInput,
         question,
@@ -109,6 +110,8 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
     } catch (error) {
       console.error("Error getting response from OpenAI:", error);
       setFeedback("Przepraszamy, wystąpił błąd przy uzyskiwaniu odpowiedzi.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -133,12 +136,14 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
         <ResultsList
           results={results}
           interimResult={listening ? transcript : null}
+          setIsLoading={setIsLoading}
         />
         <ClearButton onClear={handleClear} />
         <AIResponse
           feedback={feedback}
           isOpen={isDrawerOpen}
           setIsOpen={setIsDrawerOpen}
+          isLoading={isLoading}
         />
       </CardContent>
     </Card>

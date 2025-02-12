@@ -13,17 +13,20 @@ const AIResponse: React.FC<{
   feedback: string | null;
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
-}> = ({ feedback, isOpen, setIsOpen }) => {
+  isLoading: boolean;
+}> = ({ feedback, isOpen, setIsOpen, isLoading }) => {
   return (
     <Drawer open={isOpen} onOpenChange={setIsOpen}>
-      <DrawerContent className="max-w-2xl mx-auto rounded-t-lg transition-transform duration-900 ease-in-out p-8">
+      <DrawerContent className="max-w-4xl mx-auto rounded-t-lg transition-transform duration-900 ease-in-out p-8">
         <DrawerHeader className="text-center">
           <DrawerTitle className="text-3xl font-bold">Feedback AI</DrawerTitle>
         </DrawerHeader>
         <div className="p-4 rounded-lg">
           <ScrollArea className="max-h-96 overflow-y-auto p-4 rounded-lg">
             <p className="text-xl leading-relaxed">
-              {feedback || "Brak odpowiedzi od AI."}
+              {isLoading
+                ? "Poczekaj na odpowiedź AI..."
+                : feedback || "Brak odpowiedzi od AI."}
             </p>
           </ScrollArea>
         </div>
