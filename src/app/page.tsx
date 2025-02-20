@@ -3,7 +3,7 @@
 import "regenerator-runtime/runtime";
 import React, { useState, useEffect } from "react";
 import SpeechButton from "@/components/speech-button";
-import Questions from "@/components/questions";
+import Questions from "@/components/questions-react";
 import Image from "next/image";
 
 export default function Home() {
