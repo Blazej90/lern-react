@@ -28,7 +28,8 @@ export default function Home() {
           className="w-full h-auto mx-auto rounded-lg shadow-lg object-cover"
           priority
         />
-        <h1 className="absolute inset-0 flex items-center justify-center text-4xl font-bold text-center text-purple-500 drop-shadow-2xl bg-black bg-opacity-40 rounded-lg p-6">
+        <div className="absolute inset-0 bg-[rgba(0,0,0,0.5)] rounded-lg"></div>
+        <h1 className="absolute inset-0 flex items-center justify-center text-4xl font-bold text-center text-white drop-shadow-2xl rounded-lg p-6">
           Ucz się React.js z AI
         </h1>
       </div>
