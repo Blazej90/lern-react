@@ -9,6 +9,7 @@ import Image from "next/image";
 export default function Home() {
   const [currentQuestion, setCurrentQuestion] = useState<string | null>(null);
   const [recordingTime, setRecordingTime] = useState<number>(0);
+  const [isRecording, setIsRecording] = useState<boolean>(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -38,6 +39,7 @@ export default function Home() {
         <Questions
           onQuestionChange={setCurrentQuestion}
           setRecordingTime={setRecordingTime}
+          isRecording={isRecording}
         />
 
         {currentQuestion && (
@@ -47,6 +49,7 @@ export default function Home() {
               question={currentQuestion}
               recordingTime={recordingTime}
               setRecordingTime={setRecordingTime}
+              setIsRecording={setIsRecording}
             />
           </div>
         )}

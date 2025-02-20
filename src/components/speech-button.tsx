@@ -15,12 +15,14 @@ interface SpeechButtonProps {
   question: string;
   recordingTime: number;
   setRecordingTime: React.Dispatch<React.SetStateAction<number>>;
+  setIsRecording: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 const SpeechButton: React.FC<SpeechButtonProps> = ({
   question,
   recordingTime,
   setRecordingTime,
+  setIsRecording,
 }) => {
   const [results, setResults] = useState<{ text: string; time: number }[]>([]);
   const [isClient, setIsClient] = useState(false);
@@ -34,6 +36,10 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
     resetTranscript,
     browserSupportsSpeechRecognition,
   } = useSpeechRecognition();
+
+  useEffect(() => {
+    setIsRecording(listening);
+  }, [listening, setIsRecording]);
 
   useEffect(() => {
     setIsClient(true);

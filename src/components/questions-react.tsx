@@ -1,12 +1,19 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import { Button } from "@/components/ui/button";
 
-const QuestionPicker: React.FC<{
+interface QuestionPickerProps {
   onQuestionChange: (question: string) => void;
   setRecordingTime: React.Dispatch<React.SetStateAction<number>>;
-}> = ({ onQuestionChange, setRecordingTime }) => {
+  isRecording: boolean;
+}
+
+const QuestionPicker: React.FC<QuestionPickerProps> = ({
+  onQuestionChange,
+  setRecordingTime,
+  isRecording,
+}) => {
   const questions = [
     "Jak działa useState i kiedy go używamy?",
     "Co to jest virtual DOM i dlaczego jest używany w React?",
@@ -48,12 +55,14 @@ const QuestionPicker: React.FC<{
 
   return (
     <div className="flex flex-col items-center justify-center space-y-4">
-      <Button
-        onClick={getRandomQuestion}
-        className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white px-6 py-2 rounded-lg shadow-md transition duration-300"
-      >
-        Losuj pytanie
-      </Button>
+      {!isRecording && (
+        <Button
+          onClick={getRandomQuestion}
+          className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white px-6 py-2 rounded-lg shadow-md transition duration-300"
+        >
+          Losuj pytanie
+        </Button>
+      )}
     </div>
   );
 };
