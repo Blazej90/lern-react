@@ -1,32 +1,48 @@
 import React from "react";
+import { Button } from "@/components/ui/button";
 
-const ResultsList: React.FC<{
-  results: { text: string; time: number }[];
+interface Results {
+  question: string;
+  answer: string;
+  time: number;
+}
+
+const ResultList: React.FC<{
+  results: Results[];
   interimResult: string | null;
   setIsLoading: (loading: boolean) => void;
-}> = ({ results, interimResult, setIsLoading }) => {
-  const uniqueResults = results.filter(
-    (result, index, self) =>
-      index ===
-      self.findIndex((r) => r.text === result.text && r.time === result.time)
-  );
-
+  onDelete: (index: number) => void;
+}> = ({ results, interimResult, setIsLoading, onDelete }) => {
   React.useEffect(() => {
     setIsLoading(!!interimResult);
   }, [interimResult, setIsLoading]);
 
   return (
     <ul className="space-y-4">
-      {uniqueResults.map((result, index) => (
-        <li key={index}>
-          <div className="text-black dark:text-white">{result.text}</div>
-          <div className="text-sm text-gray-600 dark:text-gray-400">
+      {results.map((result, index) => (
+        <li
+          key={index}
+          className="p-4 border border-gray-300 dark:border-gray-700 rounded-lg shadow-md bg-white dark:bg-gray-800"
+        >
+          <div className="text-lg font-semibold text-purple-600 dark:text-purple-400">
+            Pytanie: {result.question}
+          </div>
+          <div className="text-black dark:text-white mt-2">
+            Odpowiedź: {result.answer} 
+          </div>
+          <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
             Czas odpowiedzi: {formatTime(result.time)}
           </div>
+          <Button
+            onClick={() => onDelete(index)}
+            className="mt-2 bg-red-500 hover:bg-red-600 text-white px-4 py-1 rounded-lg"
+          >
+            Usuń
+          </Button>
         </li>
       ))}
       {interimResult && (
-        <li>
+        <li className="p-4 border border-gray-300 dark:border-gray-700 rounded-lg shadow-md bg-white dark:bg-gray-800">
           <div className="text-black dark:text-white">{interimResult}</div>
         </li>
       )}
@@ -40,4 +56,4 @@ const formatTime = (time: number) => {
   return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 };
 
-export default ResultsList;
+export default ResultList;

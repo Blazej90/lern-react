@@ -6,10 +6,17 @@ import SpeechButton from "@/components/speech-button";
 import Questions from "@/components/questions-react";
 import Image from "next/image";
 
+interface Result {
+  question: string;
+  answer: string;
+  time: number;
+}
+
 export default function Home() {
   const [currentQuestion, setCurrentQuestion] = useState<string | null>(null);
   const [recordingTime, setRecordingTime] = useState<number>(0);
   const [isRecording, setIsRecording] = useState<boolean>(false);
+  const [results, setResults] = useState<Result[]>([]);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -17,6 +24,19 @@ export default function Home() {
   }, []);
 
   if (!mounted) return null;
+
+  const handleSaveResult = (answer: string, time: number) => {
+    if (currentQuestion) {
+      setResults((prev) => [
+        ...prev,
+        { question: currentQuestion, answer, time },
+      ]);
+    }
+  };
+
+  const handleDeleteResult = (index: number) => {
+    setResults((prev) => prev.filter((_, i) => i !== index));
+  };
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4">
@@ -50,6 +70,7 @@ export default function Home() {
               recordingTime={recordingTime}
               setRecordingTime={setRecordingTime}
               setIsRecording={setIsRecording}
+              onSave={handleSaveResult}
             />
           </div>
         )}

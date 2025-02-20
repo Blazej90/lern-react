@@ -5,7 +5,7 @@ import SpeechRecognition, {
 import ClearButton from "@/components/clear-button";
 import RecordingTimer from "@/components/recording-timer";
 import MicrophoneButton from "@/components/microphone-button";
-import ResultsList from "@/components/result-list";
+import ResultList from "@/components/result-list";
 import axios from "axios";
 import "regenerator-runtime/runtime";
 import AIResponse from "@/components/ai-response";
@@ -16,6 +16,7 @@ interface SpeechButtonProps {
   recordingTime: number;
   setRecordingTime: React.Dispatch<React.SetStateAction<number>>;
   setIsRecording: React.Dispatch<React.SetStateAction<boolean>>;
+  onSave: (answer: string, time: number) => void;
 }
 
 const SpeechButton: React.FC<SpeechButtonProps> = ({
@@ -23,8 +24,11 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
   recordingTime,
   setRecordingTime,
   setIsRecording,
+  onSave,
 }) => {
-  const [results, setResults] = useState<{ text: string; time: number }[]>([]);
+  const [results, setResults] = useState<
+    { question: string; answer: string; time: number }[]
+  >([]);
   const [isClient, setIsClient] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -63,13 +67,14 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
     if (!listening && transcript.trim()) {
       const timeSpent = recordingTime;
       setResults((prevResults) => [
-        { text: transcript.trim(), time: timeSpent },
+        { question, answer: transcript.trim(), time: timeSpent },
         ...prevResults,
       ]);
       resetTranscript();
       getAIResponse(transcript);
+      onSave(transcript.trim(), timeSpent);
     }
-  }, [listening, transcript, resetTranscript, recordingTime]);
+  }, [listening, transcript, resetTranscript, recordingTime, question, onSave]);
 
   const handleStartListening = () => {
     if (!listening) {
@@ -90,6 +95,10 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
     resetTranscript();
     setRecordingTime(0);
     setIsLoading(false);
+  };
+
+  const handleDeleteResult = (index: number) => {
+    setResults((prevResults) => prevResults.filter((_, i) => i !== index));
   };
 
   const getAIResponse = async (userInput: string) => {
@@ -139,10 +148,11 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
           isRecording={listening}
           onClick={listening ? handleStopListening : handleStartListening}
         />
-        <ResultsList
+        <ResultList
           results={results}
           interimResult={listening ? transcript : null}
           setIsLoading={setIsLoading}
+          onDelete={handleDeleteResult}
         />
         <ClearButton onClear={handleClear} />
         <AIResponse
