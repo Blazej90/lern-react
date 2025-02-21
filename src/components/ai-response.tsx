@@ -1,7 +1,6 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   Drawer,
-  DrawerClose,
   DrawerContent,
   DrawerHeader,
   DrawerTitle,
@@ -15,9 +14,18 @@ const AIResponse: React.FC<{
   setIsOpen: (open: boolean) => void;
   isLoading: boolean;
 }> = ({ feedback, isOpen, setIsOpen, isLoading }) => {
+  useEffect(() => {
+    if (feedback) {
+      localStorage.setItem("aiResponse", feedback);
+    }
+  }, [feedback]);
+
   return (
     <Drawer open={isOpen} onOpenChange={setIsOpen}>
-      <DrawerContent className="max-w-4xl mx-auto rounded-t-lg transition-transform duration-900 ease-in-out p-8">
+      <DrawerContent
+        autoFocus={false}
+        className="max-w-4xl mx-auto rounded-t-lg transition-transform duration-900 ease-in-out p-8"
+      >
         <DrawerHeader className="text-center">
           <DrawerTitle className="text-3xl font-bold">Feedback AI</DrawerTitle>
         </DrawerHeader>
