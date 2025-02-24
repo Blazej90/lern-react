@@ -44,6 +44,10 @@ const ResultList: React.FC<{
     setIsDialogOpen(true);
   };
 
+  const uniqueResults = Array.from(
+    new Map(results.map((res) => [res.question, res])).values()
+  );
+
   return (
     <ScrollArea className="w-full max-h-96 overflow-y-auto p-4">
       <ul className="space-y-4">
@@ -55,7 +59,7 @@ const ResultList: React.FC<{
           </Card>
         )}
 
-        {results.map((result, index) => (
+        {uniqueResults.map((result, index) => (
           <Card
             key={index}
             className="shadow-md bg-white dark:bg-black border border-gray-300 dark:border-gray-700"
