@@ -2,9 +2,9 @@
 
 import "regenerator-runtime/runtime";
 import React, { useState, useEffect } from "react";
+import Image from "next/image";
 import SpeechButton from "@/components/speech-button";
 import Questions from "@/components/questions-react";
-import Image from "next/image";
 
 interface Result {
   question: string;
