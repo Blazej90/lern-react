@@ -28,8 +28,7 @@ const ResultList: React.FC<{
   results: Results[];
   interimResult: string | null;
   setIsLoading: (loading: boolean) => void;
-  onDelete: (index: number) => void;
-}> = ({ results, interimResult, setIsLoading, onDelete }) => {
+}> = ({ results, interimResult, setIsLoading }) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedResponse, setSelectedResponse] = useState<string | null>(null);
 
@@ -37,16 +36,14 @@ const ResultList: React.FC<{
     setIsLoading(!!interimResult);
   }, [interimResult, setIsLoading]);
 
-  const handleShowAIResponse = () => {
-    const savedResponse =
-      localStorage.getItem("aiResponse") || "Brak odpowiedzi AI.";
-    setSelectedResponse(savedResponse);
+  const handleShowAIResponse = (question: string) => {
+    const storedResponses = JSON.parse(
+      localStorage.getItem("aiResponses") || "{}"
+    );
+    const response = storedResponses[question] || "Brak odpowiedzi AI.";
+    setSelectedResponse(response);
     setIsDialogOpen(true);
   };
-
-  const uniqueResults = Array.from(
-    new Map(results.map((res) => [res.question, res])).values()
-  );
 
   return (
     <ScrollArea className="w-full max-h-96 overflow-y-auto p-4">
@@ -59,7 +56,7 @@ const ResultList: React.FC<{
           </Card>
         )}
 
-        {uniqueResults.map((result, index) => (
+        {results.map((result, index) => (
           <Card
             key={index}
             className="shadow-md bg-white dark:bg-black border border-gray-300 dark:border-gray-700"
@@ -74,14 +71,14 @@ const ResultList: React.FC<{
                 Odpowiedź: {result.answer}
               </div>
               <div className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                Czas odpowiedzi: {formatTime(result.time)}
+                Czas odpowiedzi: {result.time} s
               </div>
             </CardContent>
             <CardFooter className="flex space-x-2">
               <AlertDialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <AlertDialogTrigger asChild>
                   <Button
-                    onClick={handleShowAIResponse}
+                    onClick={() => handleShowAIResponse(result.question)}
                     className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white px-6 py-2 rounded-lg shadow-md transition duration-300"
                   >
                     Odpowiedź AI
@@ -103,25 +100,12 @@ const ResultList: React.FC<{
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
-
-              <Button
-                onClick={() => onDelete(index)}
-                className="bg-red-500 hover:bg-red-600 text-white px-4 py-1 rounded-lg"
-              >
-                Usuń
-              </Button>
             </CardFooter>
           </Card>
         ))}
       </ul>
     </ScrollArea>
   );
-};
-
-const formatTime = (time: number) => {
-  const minutes = Math.floor(time / 60);
-  const seconds = time % 60;
-  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 };
 
 export default ResultList;

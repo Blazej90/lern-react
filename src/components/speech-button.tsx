@@ -30,9 +30,9 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
     { question: string; answer: string; time: number }[]
   >([]);
   const [isClient, setIsClient] = useState(false);
-  const [feedback, setFeedback] = useState<string | null>(null);
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [feedback, setFeedback] = useState<string | null>(null);
 
   const {
     transcript,
@@ -63,50 +63,33 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
     };
   }, [listening, setRecordingTime]);
 
+  const handleStartListening = () => {
+    SpeechRecognition.startListening({ continuous: true });
+  };
+
+  const handleStopListening = () => {
+    SpeechRecognition.stopListening();
+    setIsDrawerOpen(true);
+  };
+
   useEffect(() => {
     if (!listening && transcript.trim()) {
       const timeSpent = recordingTime;
-      setResults((prevResults) => [
-        { question, answer: transcript.trim(), time: timeSpent },
-        ...prevResults,
-      ]);
+      const newResult = {
+        question,
+        answer: transcript.trim(),
+        time: timeSpent,
+      };
+
+      setResults((prevResults) => [newResult, ...prevResults]);
       resetTranscript();
       getAIResponse(transcript);
       onSave(transcript.trim(), timeSpent);
     }
   }, [listening, transcript, resetTranscript, recordingTime, question, onSave]);
 
-  const handleStartListening = () => {
-    if (!listening) {
-      SpeechRecognition.startListening({ continuous: true });
-    }
-  };
-
-  const handleStopListening = () => {
-    if (listening) {
-      SpeechRecognition.stopListening();
-      setIsDrawerOpen(true);
-    }
-  };
-
-  const handleClear = () => {
-    setResults([]);
-    setFeedback(null);
-    resetTranscript();
-    setRecordingTime(0);
-    setIsLoading(false);
-  };
-
-  const handleDeleteResult = (index: number) => {
-    setResults((prevResults) => prevResults.filter((_, i) => i !== index));
-  };
-
   const getAIResponse = async (userInput: string) => {
-    if (!userInput.trim()) {
-      console.error("User input is empty!");
-      setFeedback("Please provide some input.");
-      return;
-    }
+    if (!userInput.trim()) return;
 
     try {
       setIsLoading(true);
@@ -114,14 +97,16 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
         userAnswer: userInput,
         question,
       });
+      const aiAnswer = response.data.aiAnswer || "Brak odpowiedzi AI.";
 
-      const aiAnswer = response.data.aiAnswer;
+      setFeedback(aiAnswer);
+      setIsDrawerOpen(true);
 
-      if (aiAnswer) {
-        setFeedback(aiAnswer);
-      } else {
-        setFeedback("Brak odpowiedzi od AI.");
-      }
+      const storedResponses = JSON.parse(
+        localStorage.getItem("aiResponses") || "{}"
+      );
+      storedResponses[question] = aiAnswer;
+      localStorage.setItem("aiResponses", JSON.stringify(storedResponses));
     } catch (error) {
       console.error("Error getting response from OpenAI:", error);
       setFeedback("Przepraszamy, wystąpił błąd przy uzyskiwaniu odpowiedzi.");
@@ -152,9 +137,9 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
           results={results}
           interimResult={listening ? transcript : null}
           setIsLoading={setIsLoading}
-          onDelete={handleDeleteResult}
         />
-        <ClearButton onClear={handleClear} />
+        <ClearButton onClear={() => setResults([])} />
+
         <AIResponse
           feedback={feedback}
           isOpen={isDrawerOpen}
