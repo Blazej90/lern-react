@@ -1,8 +1,10 @@
 "use client";
 
+import { useUser } from "@clerk/nextjs";
 import "regenerator-runtime/runtime";
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import SpeechButton from "@/components/speech-button";
 import Questions from "@/components/questions-react";
 import ResultList from "@/components/result-list";
@@ -14,6 +16,9 @@ interface Result {
 }
 
 export default function Home() {
+  const { isLoaded, isSignedIn } = useUser();
+  const router = useRouter();
+
   const [currentQuestion, setCurrentQuestion] = useState<string | null>(null);
   const [recordingTime, setRecordingTime] = useState<number>(0);
   const [isRecording, setIsRecording] = useState<boolean>(false);
@@ -22,23 +27,18 @@ export default function Home() {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted) return null;
-
-  const handleSaveResult = (answer: string, time: number) => {
-    if (currentQuestion) {
-      setResults((prev) => [
-        { question: currentQuestion, answer, time },
-        ...prev,
-      ]);
+    if (isLoaded && !isSignedIn) {
+      router.push("/sign-in");
     }
-  };
+  }, [isLoaded, isSignedIn, router]);
 
-  const handleDeleteResult = (index: number) => {
-    setResults((prev) => prev.filter((_, i) => i !== index));
-  };
+  useEffect(() => {
+    if (isLoaded && isSignedIn) {
+      setMounted(true);
+    }
+  }, [isLoaded, isSignedIn]);
+
+  if (!mounted || !isSignedIn) return null;
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4">
@@ -75,7 +75,12 @@ export default function Home() {
               recordingTime={recordingTime}
               setRecordingTime={setRecordingTime}
               setIsRecording={setIsRecording}
-              onSave={handleSaveResult}
+              onSave={(answer, time) =>
+                setResults([
+                  ...results,
+                  { question: currentQuestion, answer, time },
+                ])
+              }
               isDrawerOpen={isDrawerOpen}
               setIsDrawerOpen={setIsDrawerOpen}
             />
@@ -88,7 +93,9 @@ export default function Home() {
               results={results}
               interimResult={null}
               setIsLoading={() => {}}
-              onDelete={handleDeleteResult}
+              onDelete={(index) =>
+                setResults(results.filter((_, i) => i !== index))
+              }
             />
           </div>
         )}
