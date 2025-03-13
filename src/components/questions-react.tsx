@@ -7,12 +7,15 @@ interface QuestionPickerProps {
   onQuestionChange: (question: string) => void;
   setRecordingTime: React.Dispatch<React.SetStateAction<number>>;
   isRecording: boolean;
+  currentQuestion: string | null;
+  setIsDrawerOpen: React.Dispatch<React.SetStateAction<boolean>>;
 }
-
 const QuestionPicker: React.FC<QuestionPickerProps> = ({
   onQuestionChange,
   setRecordingTime,
   isRecording,
+  currentQuestion,
+  setIsDrawerOpen,
 }) => {
   const questions = [
     "Jak działa useState i kiedy go używamy?",
@@ -46,6 +49,8 @@ const QuestionPicker: React.FC<QuestionPickerProps> = ({
   ];
 
   const getRandomQuestion = () => {
+    setIsDrawerOpen(false);
+
     const randomIndex = Math.floor(Math.random() * questions.length);
     const question = questions[randomIndex];
     onQuestionChange(question);
@@ -55,7 +60,7 @@ const QuestionPicker: React.FC<QuestionPickerProps> = ({
 
   return (
     <div className="flex flex-col items-center justify-center space-y-4">
-      {!isRecording && (
+      {!isRecording && !currentQuestion && (
         <Button
           onClick={getRandomQuestion}
           className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white px-6 py-2 rounded-lg shadow-md transition duration-300"

@@ -5,6 +5,7 @@ import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import SpeechButton from "@/components/speech-button";
 import Questions from "@/components/questions-react";
+import ResultList from "@/components/result-list";
 
 interface Result {
   question: string;
@@ -17,6 +18,7 @@ export default function Home() {
   const [recordingTime, setRecordingTime] = useState<number>(0);
   const [isRecording, setIsRecording] = useState<boolean>(false);
   const [results, setResults] = useState<Result[]>([]);
+  const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -28,8 +30,8 @@ export default function Home() {
   const handleSaveResult = (answer: string, time: number) => {
     if (currentQuestion) {
       setResults((prev) => [
-        ...prev,
         { question: currentQuestion, answer, time },
+        ...prev,
       ]);
     }
   };
@@ -60,6 +62,8 @@ export default function Home() {
           onQuestionChange={setCurrentQuestion}
           setRecordingTime={setRecordingTime}
           isRecording={isRecording}
+          currentQuestion={currentQuestion}
+          setIsDrawerOpen={setIsDrawerOpen}
         />
 
         {currentQuestion && (
@@ -67,10 +71,24 @@ export default function Home() {
             <h3 className="text-xl mb-4">Pytanie: {currentQuestion}</h3>
             <SpeechButton
               question={currentQuestion}
+              setCurrentQuestion={setCurrentQuestion}
               recordingTime={recordingTime}
               setRecordingTime={setRecordingTime}
               setIsRecording={setIsRecording}
               onSave={handleSaveResult}
+              isDrawerOpen={isDrawerOpen}
+              setIsDrawerOpen={setIsDrawerOpen}
+            />
+          </div>
+        )}
+
+        {results.length > 0 && (
+          <div className="mt-6 p-4 rounded-lg">
+            <ResultList
+              results={results}
+              interimResult={null}
+              setIsLoading={() => {}}
+              onDelete={handleDeleteResult}
             />
           </div>
         )}

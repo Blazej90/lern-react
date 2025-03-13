@@ -3,10 +3,11 @@ import { Button } from "@/components/ui/button";
 const MicrophoneButton: React.FC<{
   isRecording: boolean;
   onClick: () => void;
-}> = ({ isRecording, onClick }) => {
+  onStop: () => void;
+}> = ({ isRecording, onClick, onStop }) => {
   return (
     <Button
-      onClick={onClick}
+      onClick={isRecording ? onStop : onClick}
       className={
         isRecording
           ? "bg-red-500 text-white hover:bg-red-600"

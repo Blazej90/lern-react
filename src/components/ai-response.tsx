@@ -21,10 +21,16 @@ const AIResponse: React.FC<{
   }, [feedback]);
 
   return (
-    <Drawer open={isOpen} onOpenChange={setIsOpen}>
+    <Drawer
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) setIsOpen(false);
+      }}
+    >
       <DrawerContent
         autoFocus={false}
         className="max-w-4xl mx-auto rounded-t-lg transition-transform duration-900 ease-in-out p-8"
+        aria-hidden="false"
       >
         <DrawerHeader className="text-center">
           <DrawerTitle className="text-3xl font-bold">Feedback AI</DrawerTitle>

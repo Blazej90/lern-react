@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import SpeechRecognition, {
   useSpeechRecognition,
 } from "react-speech-recognition";
-import ClearButton from "@/components/clear-button";
 import RecordingTimer from "@/components/recording-timer";
 import MicrophoneButton from "@/components/microphone-button";
 import ResultList from "@/components/result-list";
@@ -12,26 +11,31 @@ import AIResponse from "@/components/ai-response";
 import { Card, CardContent } from "@/components/ui/card";
 
 interface SpeechButtonProps {
-  question: string;
+  question: string | null;
+  setCurrentQuestion: React.Dispatch<React.SetStateAction<string | null>>;
   recordingTime: number;
   setRecordingTime: React.Dispatch<React.SetStateAction<number>>;
   setIsRecording: React.Dispatch<React.SetStateAction<boolean>>;
   onSave: (answer: string, time: number) => void;
+  isDrawerOpen: boolean;
+  setIsDrawerOpen: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 const SpeechButton: React.FC<SpeechButtonProps> = ({
   question,
+  setCurrentQuestion,
   recordingTime,
   setRecordingTime,
   setIsRecording,
   onSave,
+  isDrawerOpen,
+  setIsDrawerOpen,
 }) => {
   const [results, setResults] = useState<
     { question: string; answer: string; time: number }[]
   >([]);
   const [isClient, setIsClient] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
 
   const {
@@ -69,14 +73,20 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
 
   const handleStopListening = () => {
     SpeechRecognition.stopListening();
-    setIsDrawerOpen(true);
+
+    if (transcript.trim()) {
+      setTimeout(() => {
+        setCurrentQuestion(null);
+        setIsDrawerOpen(true);
+      }, 1000);
+    }
   };
 
   useEffect(() => {
     if (!listening && transcript.trim()) {
       const timeSpent = recordingTime;
       const newResult = {
-        question,
+        question: question || "Nieznane pytanie",
         answer: transcript.trim(),
         time: timeSpent,
       };
@@ -85,6 +95,9 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
       resetTranscript();
       getAIResponse(transcript);
       onSave(transcript.trim(), timeSpent);
+
+      console.log("Opening Drawer...");
+      setIsDrawerOpen(true);
     }
   }, [listening, transcript, resetTranscript, recordingTime, question, onSave]);
 
@@ -105,7 +118,7 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
       const storedResponses = JSON.parse(
         localStorage.getItem("aiResponses") || "{}"
       );
-      storedResponses[question] = aiAnswer;
+      storedResponses[question || "Nieznane pytanie"] = aiAnswer;
       localStorage.setItem("aiResponses", JSON.stringify(storedResponses));
     } catch (error) {
       console.error("Error getting response from OpenAI:", error);
@@ -132,13 +145,14 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
         <MicrophoneButton
           isRecording={listening}
           onClick={listening ? handleStopListening : handleStartListening}
+          onStop={handleStopListening}
         />
+
         <ResultList
           results={results}
           interimResult={listening ? transcript : null}
           setIsLoading={setIsLoading}
         />
-        <ClearButton onClear={() => setResults([])} />
 
         <AIResponse
           feedback={feedback}

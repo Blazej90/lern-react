@@ -24,11 +24,19 @@ interface Results {
   time: number;
 }
 
-const ResultList: React.FC<{
+interface ResultListProps {
   results: Results[];
   interimResult: string | null;
   setIsLoading: (loading: boolean) => void;
-}> = ({ results, interimResult, setIsLoading }) => {
+  onDelete?: (index: number) => void; 
+}
+
+const ResultList: React.FC<ResultListProps> = ({
+  results,
+  interimResult,
+  setIsLoading,
+  onDelete,
+}) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedResponse, setSelectedResponse] = useState<string | null>(null);
 
@@ -40,8 +48,7 @@ const ResultList: React.FC<{
     const storedResponses = JSON.parse(
       localStorage.getItem("aiResponses") || "{}"
     );
-    const response = storedResponses[question] || "Brak odpowiedzi AI.";
-    setSelectedResponse(response);
+    setSelectedResponse(storedResponses[question] || "Brak odpowiedzi AI.");
     setIsDialogOpen(true);
   };
 
@@ -71,7 +78,7 @@ const ResultList: React.FC<{
                 Odpowiedź: {result.answer}
               </div>
               <div className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                Czas odpowiedzi: {result.time} s
+                Czas odpowiedzi: {formatTime(result.time)}
               </div>
             </CardContent>
             <CardFooter className="flex space-x-2">
@@ -100,12 +107,27 @@ const ResultList: React.FC<{
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
+
+              {onDelete && (
+                <Button
+                  onClick={() => onDelete(index)}
+                  className="bg-red-500 hover:bg-red-600 text-white px-4 py-1 rounded-lg"
+                >
+                  Usuń
+                </Button>
+              )}
             </CardFooter>
           </Card>
         ))}
       </ul>
     </ScrollArea>
   );
+};
+
+const formatTime = (time: number) => {
+  const minutes = Math.floor(time / 60);
+  const seconds = time % 60;
+  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 };
 
 export default ResultList;
