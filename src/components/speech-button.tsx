@@ -9,6 +9,7 @@ import axios from "axios";
 import "regenerator-runtime/runtime";
 import AIResponse from "@/components/ai-response";
 import { Card, CardContent } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
 
 interface SpeechButtonProps {
   question: string | null;
@@ -147,7 +148,7 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
           onStop={handleStopListening}
         />
 
-        <textarea
+        <Textarea
           className="w-full p-3 border rounded-lg text-lg bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white"
           value={transcript}
           readOnly
