@@ -33,12 +33,12 @@ export default function Home() {
   }, [isLoaded, isSignedIn, router]);
 
   useEffect(() => {
-    if (isLoaded && isSignedIn) {
+    if (isLoaded) {
       setMounted(true);
     }
-  }, [isLoaded, isSignedIn]);
+  }, [isLoaded]);
 
-  if (!mounted || !isSignedIn) return null;
+  if (!isSignedIn) return null;
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4">

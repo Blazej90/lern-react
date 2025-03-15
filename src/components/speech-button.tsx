@@ -91,12 +91,11 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
         time: timeSpent,
       };
 
-      setResults((prevResults) => [newResult, ...prevResults]);
+      setResults([newResult]);
       resetTranscript();
       getAIResponse(transcript);
       onSave(transcript.trim(), timeSpent);
 
-      console.log("Opening Drawer...");
       setIsDrawerOpen(true);
     }
   }, [listening, transcript, resetTranscript, recordingTime, question, onSave]);
@@ -148,11 +147,20 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
           onStop={handleStopListening}
         />
 
-        <ResultList
-          results={results}
-          interimResult={listening ? transcript : null}
-          setIsLoading={setIsLoading}
+        <textarea
+          className="w-full p-3 border rounded-lg text-lg bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white"
+          value={transcript}
+          readOnly
+          placeholder="Twoja odpowiedź pojawi się tutaj..."
         />
+
+        {results.length > 0 && (
+          <ResultList
+            results={results}
+            interimResult={listening ? transcript : null}
+            setIsLoading={setIsLoading}
+          />
+        )}
 
         <AIResponse
           feedback={feedback}
