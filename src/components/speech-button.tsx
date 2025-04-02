@@ -75,7 +75,7 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
     if (transcript.trim()) {
       setTimeout(() => {
         setIsDrawerOpen(true);
-      }, 1000);
+      }, 500);
     }
   };
 
@@ -92,8 +92,6 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
       resetTranscript();
       getAIResponse(transcript);
       onSave(transcript.trim(), timeSpent);
-
-      setIsDrawerOpen(true);
     }
   }, [listening, transcript, resetTranscript, recordingTime, question, onSave]);
 
@@ -101,22 +99,19 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
     if (!userInput.trim()) return;
 
     setFeedback(null);
+    setIsDrawerOpen(true);
+    setIsLoading(true);
+
     try {
-      setIsLoading(true);
       const response = await axios.post("/api/openai", {
         userAnswer: userInput,
         question,
       });
-      const aiAnswer = response.data.aiAnswer || "Brak odpowiedzi AI.";
+
+      const raw = response.data.aiAnswer;
+      const aiAnswer = raw && raw.trim().length > 0 ? raw : null;
 
       setFeedback(aiAnswer);
-      setIsDrawerOpen(true);
-
-      const storedResponses = JSON.parse(
-        localStorage.getItem("aiResponses") || "{}"
-      );
-      storedResponses[question || "Nieznane pytanie"] = aiAnswer;
-      localStorage.setItem("aiResponses", JSON.stringify(storedResponses));
     } catch (error) {
       console.error("Error getting response from OpenAI:", error);
       setFeedback("Przepraszamy, wystąpił błąd przy uzyskiwaniu odpowiedzi.");
