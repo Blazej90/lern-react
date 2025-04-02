@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import SpeechRecognition, {
   useSpeechRecognition,
 } from "react-speech-recognition";
@@ -36,6 +36,8 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
   const [feedback, setFeedback] = useState<string | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
   const {
     transcript,
     listening,
@@ -64,6 +66,13 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
       if (timer) clearInterval(timer);
     };
   }, [listening, setRecordingTime]);
+
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+    }
+  }, [transcript]);
 
   const handleStartListening = () => {
     SpeechRecognition.startListening({ continuous: true });
@@ -153,7 +162,8 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
         />
 
         <Textarea
-          className="w-full p-3 border rounded-lg text-lg bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white"
+          ref={textareaRef}
+          className="w-full p-3 border rounded-lg text-lg bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white resize-none overflow-hidden"
           value={transcript}
           readOnly
           placeholder="Twoja odpowiedź pojawi się tutaj..."

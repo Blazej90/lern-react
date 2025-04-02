@@ -55,7 +55,7 @@ const ResultList: React.FC<ResultListProps> = ({
         .map(
           (res: string, i: number) =>
             `Wersja ${i + 1}:
-${res}`
+            ${res}`
         )
         .join("\n\n---\n\n");
       setSelectedResponse(formatted);
