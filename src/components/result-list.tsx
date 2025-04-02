@@ -28,7 +28,7 @@ interface ResultListProps {
   results: Results[];
   interimResult: string | null;
   setIsLoading: (loading: boolean) => void;
-  onDelete?: (index: number) => void; 
+  onDelete?: (index: number) => void;
 }
 
 const ResultList: React.FC<ResultListProps> = ({
@@ -48,7 +48,20 @@ const ResultList: React.FC<ResultListProps> = ({
     const storedResponses = JSON.parse(
       localStorage.getItem("aiResponses") || "{}"
     );
-    setSelectedResponse(storedResponses[question] || "Brak odpowiedzi AI.");
+
+    const responses = storedResponses[question];
+    if (Array.isArray(responses) && responses.length > 0) {
+      const formatted = responses
+        .map(
+          (res: string, i: number) =>
+            `Wersja ${i + 1}:
+${res}`
+        )
+        .join("\n\n---\n\n");
+      setSelectedResponse(formatted);
+    } else {
+      setSelectedResponse("Brak odpowiedzi AI.");
+    }
     setIsDialogOpen(true);
   };
 
@@ -96,7 +109,7 @@ const ResultList: React.FC<ResultListProps> = ({
                     <AlertDialogTitle>Odpowiedź AI</AlertDialogTitle>
                   </AlertDialogHeader>
                   <ScrollArea className="max-h-60 p-2 border border-gray-300 dark:border-gray-700 rounded-md">
-                    <AlertDialogDescription className="text-lg leading-relaxed">
+                    <AlertDialogDescription className="text-lg whitespace-pre-wrap leading-relaxed">
                       {selectedResponse}
                     </AlertDialogDescription>
                   </ScrollArea>

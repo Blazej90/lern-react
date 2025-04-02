@@ -110,6 +110,20 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
       const aiAnswer = raw && raw.trim().length > 0 ? raw : null;
 
       setFeedback(aiAnswer);
+
+      if (aiAnswer) {
+        const key = question || "Nieznane pytanie";
+        const storedResponses = JSON.parse(
+          localStorage.getItem("aiResponses") || "{}"
+        );
+
+        if (!Array.isArray(storedResponses[key])) {
+          storedResponses[key] = [];
+        }
+
+        storedResponses[key].push(aiAnswer);
+        localStorage.setItem("aiResponses", JSON.stringify(storedResponses));
+      }
     } catch (error) {
       console.error("Error getting response from OpenAI:", error);
       setFeedback("Przepraszamy, wystąpił błąd przy uzyskiwaniu odpowiedzi.");
