@@ -18,8 +18,6 @@ interface SpeechButtonProps {
   setRecordingTime: React.Dispatch<React.SetStateAction<number>>;
   setIsRecording: React.Dispatch<React.SetStateAction<boolean>>;
   onSave: (answer: string, time: number) => void;
-  isDrawerOpen: boolean;
-  setIsDrawerOpen: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 const SpeechButton: React.FC<SpeechButtonProps> = ({
@@ -29,8 +27,6 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
   setRecordingTime,
   setIsRecording,
   onSave,
-  isDrawerOpen,
-  setIsDrawerOpen,
 }) => {
   const [results, setResults] = useState<
     { question: string; answer: string; time: number }[]
@@ -38,6 +34,7 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
   const [isClient, setIsClient] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   const {
     transcript,
@@ -77,7 +74,6 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
 
     if (transcript.trim()) {
       setTimeout(() => {
-        setCurrentQuestion(null);
         setIsDrawerOpen(true);
       }, 1000);
     }
@@ -104,6 +100,7 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
   const getAIResponse = async (userInput: string) => {
     if (!userInput.trim()) return;
 
+    setFeedback(null);
     try {
       setIsLoading(true);
       const response = await axios.post("/api/openai", {
@@ -166,7 +163,12 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
         <AIResponse
           feedback={feedback}
           isOpen={isDrawerOpen}
-          setIsOpen={setIsDrawerOpen}
+          setIsOpen={(open) => {
+            setIsDrawerOpen(open);
+            if (!open) {
+              setCurrentQuestion(null);
+            }
+          }}
           isLoading={isLoading}
         />
       </CardContent>

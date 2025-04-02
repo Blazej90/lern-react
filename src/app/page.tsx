@@ -23,7 +23,6 @@ export default function Home() {
   const [recordingTime, setRecordingTime] = useState<number>(0);
   const [isRecording, setIsRecording] = useState<boolean>(false);
   const [results, setResults] = useState<Result[]>([]);
-  const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -63,7 +62,6 @@ export default function Home() {
           setRecordingTime={setRecordingTime}
           isRecording={isRecording}
           currentQuestion={currentQuestion}
-          setIsDrawerOpen={setIsDrawerOpen}
         />
 
         {currentQuestion && (
@@ -78,11 +76,9 @@ export default function Home() {
               onSave={(answer, time) =>
                 setResults([
                   ...results,
-                  { question: currentQuestion, answer, time },
+                  { question: currentQuestion ?? "Brak pytania", answer, time },
                 ])
               }
-              isDrawerOpen={isDrawerOpen}
-              setIsDrawerOpen={setIsDrawerOpen}
             />
           </div>
         )}

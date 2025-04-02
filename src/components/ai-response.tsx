@@ -40,7 +40,9 @@ const AIResponse: React.FC<{
             <p className="text-xl leading-relaxed">
               {isLoading
                 ? "Poczekaj na odpowiedź AI..."
-                : feedback || "Brak odpowiedzi od AI."}
+                : feedback?.trim()
+                ? feedback
+                : "Brak odpowiedzi od AI."}
             </p>
           </ScrollArea>
         </div>
