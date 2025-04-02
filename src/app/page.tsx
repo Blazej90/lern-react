@@ -74,10 +74,13 @@ export default function Home() {
               setRecordingTime={setRecordingTime}
               setIsRecording={setIsRecording}
               onSave={(answer, time) =>
-                setResults([
-                  ...results,
-                  { question: currentQuestion ?? "Brak pytania", answer, time },
-                ])
+                setResults((prev) => {
+                  const question = currentQuestion ?? "Brak pytania";
+                  const withoutDuplicate = prev.filter(
+                    (r) => r.question !== question
+                  );
+                  return [...withoutDuplicate, { question, answer, time }];
+                })
               }
             />
           </div>

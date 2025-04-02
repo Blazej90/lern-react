@@ -87,8 +87,6 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
         answer: transcript.trim(),
         time: timeSpent,
       };
-
-      setResults([newResult]);
       resetTranscript();
       getAIResponse(transcript);
       onSave(transcript.trim(), timeSpent);
