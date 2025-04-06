@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useEffect, useRef, useState } from "react";
 import SpeechRecognition, {
   useSpeechRecognition,
@@ -28,9 +30,6 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
   setIsRecording,
   onSave,
 }) => {
-  const [results, setResults] = useState<
-    { question: string; answer: string; time: number }[]
-  >([]);
   const [isClient, setIsClient] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -46,12 +45,12 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
   } = useSpeechRecognition();
 
   useEffect(() => {
-    setIsRecording(listening);
-  }, [listening, setIsRecording]);
-
-  useEffect(() => {
     setIsClient(true);
   }, []);
+
+  useEffect(() => {
+    setIsRecording(listening);
+  }, [listening, setIsRecording]);
 
   useEffect(() => {
     let timer: NodeJS.Timeout | null = null;
@@ -59,8 +58,6 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
       timer = setInterval(() => {
         setRecordingTime((prev) => prev + 1);
       }, 1000);
-    } else if (timer) {
-      clearInterval(timer);
     }
     return () => {
       if (timer) clearInterval(timer);
@@ -80,7 +77,6 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
 
   const handleStopListening = () => {
     SpeechRecognition.stopListening();
-
     if (transcript.trim()) {
       setTimeout(() => {
         setIsDrawerOpen(true);
@@ -91,16 +87,14 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
   useEffect(() => {
     if (!listening && transcript.trim()) {
       const timeSpent = recordingTime;
-      const newResult = {
-        question: question || "Nieznane pytanie",
-        answer: transcript.trim(),
-        time: timeSpent,
-      };
+      const answer = transcript.trim();
+
+      getAIResponse(answer);
+      onSave(answer, timeSpent);
+
       resetTranscript();
-      getAIResponse(transcript);
-      onSave(transcript.trim(), timeSpent);
     }
-  }, [listening, transcript, resetTranscript, recordingTime, question, onSave]);
+  }, [listening]);
 
   const getAIResponse = async (userInput: string) => {
     if (!userInput.trim()) return;
@@ -146,15 +140,16 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
   if (!browserSupportsSpeechRecognition) {
     return (
       <p className="text-red-500 text-center">
-        Your browser does not support speech recognition.
+        Twoja przeglądarka nie obsługuje rozpoznawania mowy.
       </p>
     );
   }
 
   return (
-    <Card className="w-full">
+    <Card className="w-full max-w-2xl mx-auto">
       <CardContent className="flex flex-col items-center space-y-4 sm:space-y-6 p-4 sm:p-6">
         <RecordingTimer isRecording={listening} recordingTime={recordingTime} />
+
         <MicrophoneButton
           isRecording={listening}
           onClick={listening ? handleStopListening : handleStartListening}
@@ -163,28 +158,18 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
 
         <Textarea
           ref={textareaRef}
-          className="w-full p-3 border rounded-lg text-base sm:text-lg bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white resize-none overflow-hidden min-h-[80px]"
+          className="w-full p-3 border rounded-lg text-base sm:text-lg bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white resize-none overflow-hidden min-h-[80px] shadow-inner focus:outline-none"
           value={transcript}
           readOnly
           placeholder="Twoja odpowiedź pojawi się tutaj..."
         />
-
-        {results.length > 0 && (
-          <ResultList
-            results={results}
-            interimResult={listening ? transcript : null}
-            setIsLoading={setIsLoading}
-          />
-        )}
 
         <AIResponse
           feedback={feedback}
           isOpen={isDrawerOpen}
           setIsOpen={(open) => {
             setIsDrawerOpen(open);
-            if (!open) {
-              setCurrentQuestion(null);
-            }
+            if (!open) setCurrentQuestion(null);
           }}
           isLoading={isLoading}
         />
