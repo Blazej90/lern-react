@@ -152,8 +152,8 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
   }
 
   return (
-    <Card>
-      <CardContent className="flex flex-col items-center space-y-6 p-6">
+    <Card className="w-full">
+      <CardContent className="flex flex-col items-center space-y-4 sm:space-y-6 p-4 sm:p-6">
         <RecordingTimer isRecording={listening} recordingTime={recordingTime} />
         <MicrophoneButton
           isRecording={listening}
@@ -163,7 +163,7 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
 
         <Textarea
           ref={textareaRef}
-          className="w-full p-3 border rounded-lg text-lg bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white resize-none overflow-hidden"
+          className="w-full p-3 border rounded-lg text-base sm:text-lg bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white resize-none overflow-hidden min-h-[80px]"
           value={transcript}
           readOnly
           placeholder="Twoja odpowiedź pojawi się tutaj..."

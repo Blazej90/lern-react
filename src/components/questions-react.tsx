@@ -55,11 +55,11 @@ const QuestionPicker: React.FC<QuestionPickerProps> = ({
   };
 
   return (
-    <div className="flex flex-col items-center justify-center space-y-4">
+    <div className="flex flex-col items-center justify-center space-y-4 w-full">
       {!isRecording && !currentQuestion && (
         <Button
           onClick={getRandomQuestion}
-          className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white px-6 py-2 rounded-lg shadow-md transition duration-300"
+          className="text-base sm:text-lg md:text-xl bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg shadow-md transition duration-300 w-full max-w-xs"
         >
           Losuj pytanie
         </Button>

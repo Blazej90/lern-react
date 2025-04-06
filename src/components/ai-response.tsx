@@ -32,32 +32,42 @@ const AIResponse: React.FC<{
     >
       <DrawerContent
         autoFocus={false}
-        className="max-w-4xl mx-auto rounded-t-lg transition-transform duration-900 ease-in-out p-8"
+        className="w-full max-w-md sm:max-w-lg md:max-w-2xl lg:max-w-4xl mx-auto rounded-t-lg transition-transform duration-700 ease-in-out p-4 sm:p-6"
         aria-hidden="false"
       >
         <DrawerHeader className="text-center">
-          <DrawerTitle className="text-3xl font-bold">Feedback AI</DrawerTitle>
+          <DrawerTitle className="text-xl sm:text-2xl md:text-3xl font-bold">
+            Feedback AI
+          </DrawerTitle>
         </DrawerHeader>
 
-        <div className="p-4 rounded-lg">
-          <ScrollArea className="max-h-96 overflow-y-auto p-4 rounded-lg">
+        <div className="p-2 sm:p-4 rounded-lg">
+          <ScrollArea className="max-h-80 sm:max-h-96 overflow-y-auto rounded-lg">
             {isLoading || feedback === null ? (
-              <div className="flex items-center justify-center gap-3 text-xl font-medium text-gray-800 dark:text-white">
+              <div className="flex items-center justify-center gap-2 sm:gap-3 text-base sm:text-lg font-medium text-gray-800 dark:text-white">
                 <Loader2 className="w-5 h-5 animate-spin" />
                 <span className="animate-pulse">
                   AI is typing<span className="animate-bounce">...</span>
                 </span>
               </div>
             ) : feedback.trim() ? (
-              <p className="text-xl leading-relaxed">{feedback}</p>
+              <p className="text-base sm:text-lg leading-relaxed whitespace-pre-wrap">
+                {feedback}
+              </p>
             ) : (
-              <p className="text-xl leading-relaxed">Brak odpowiedzi od AI.</p>
+              <p className="text-base sm:text-lg leading-relaxed">
+                Brak odpowiedzi od AI.
+              </p>
             )}
           </ScrollArea>
         </div>
 
-        <div className="flex justify-center mt-6">
-          <Button variant="outline" onClick={() => setIsOpen(false)}>
+        <div className="flex justify-center mt-4 sm:mt-6">
+          <Button
+            variant="outline"
+            onClick={() => setIsOpen(false)}
+            className="text-sm sm:text-base px-6 py-2"
+          >
             Zamknij
           </Button>
         </div>

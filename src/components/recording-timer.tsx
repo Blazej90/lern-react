@@ -9,7 +9,7 @@ const RecordingTimer: React.FC<{
 }> = ({ isRecording, recordingTime }) => {
   return (
     <h1
-      className={`text-2xl font-semibold ${
+      className={`text-base sm:text-xl md:text-2xl font-semibold ${
         isRecording ? "text-green-500" : "text-gray-500"
       }`}
     >

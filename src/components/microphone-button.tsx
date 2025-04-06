@@ -8,11 +8,12 @@ const MicrophoneButton: React.FC<{
   return (
     <Button
       onClick={isRecording ? onStop : onClick}
-      className={
-        isRecording
-          ? "bg-red-500 text-white hover:bg-red-600"
-          : "bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white px-6 py-2 rounded-lg shadow-md transition duration-300"
-      }
+      className={`w-full sm:w-auto text-sm sm:text-base px-4 sm:px-6 py-2 rounded-lg shadow-md transition duration-300
+        ${
+          isRecording
+            ? "bg-red-500 text-white hover:bg-red-600"
+            : "bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white"
+        }`}
     >
       {isRecording ? "Stop Recording" : "Start Recording"}
     </Button>
