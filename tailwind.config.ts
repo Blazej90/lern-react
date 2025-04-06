@@ -73,8 +73,8 @@ export default {
         },
       },
       animationDelay: {
-        2000: "2s",
-        4000: "4s",
+        "2000": "2s",
+        "4000": "4s",
       },
     },
   },
