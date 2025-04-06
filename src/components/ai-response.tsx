@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2 } from "lucide-react";
+import { Loader2, Bot } from "lucide-react";
 
 const AIResponse: React.FC<{
   feedback: string | null;
@@ -36,26 +36,27 @@ const AIResponse: React.FC<{
         aria-hidden="false"
       >
         <DrawerHeader className="text-center">
-          <DrawerTitle className="text-xl sm:text-2xl md:text-3xl font-bold">
+          <DrawerTitle className="flex items-center justify-center gap-2 text-xl sm:text-2xl md:text-3xl font-bold text-purple-600 dark:text-purple-400">
+            <Bot className="w-6 h-6" />
             Feedback AI
           </DrawerTitle>
         </DrawerHeader>
 
         <div className="p-2 sm:p-4 rounded-lg">
-          <ScrollArea className="max-h-80 sm:max-h-96 overflow-y-auto rounded-lg">
+          <ScrollArea className="max-h-[60vh] sm:max-h-[70vh] overflow-y-auto rounded-lg">
             {isLoading || feedback === null ? (
-              <div className="flex items-center justify-center gap-2 sm:gap-3 text-base sm:text-lg font-medium text-gray-800 dark:text-white">
+              <div className="flex items-center justify-center gap-3 text-base sm:text-lg font-medium text-gray-800 dark:text-white animate-fade-in">
                 <Loader2 className="w-5 h-5 animate-spin" />
                 <span className="animate-pulse">
                   AI is typing<span className="animate-bounce">...</span>
                 </span>
               </div>
             ) : feedback.trim() ? (
-              <p className="text-base sm:text-lg leading-relaxed whitespace-pre-wrap">
+              <div className="prose dark:prose-invert max-w-none text-base sm:text-lg whitespace-pre-wrap leading-relaxed transition-opacity duration-500 ease-in opacity-100">
                 {feedback}
-              </p>
+              </div>
             ) : (
-              <p className="text-base sm:text-lg leading-relaxed">
+              <p className="text-base sm:text-lg leading-relaxed text-muted-foreground">
                 Brak odpowiedzi od AI.
               </p>
             )}
