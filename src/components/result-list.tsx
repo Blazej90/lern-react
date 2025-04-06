@@ -19,7 +19,7 @@ import {
   CardContent,
   CardFooter,
 } from "@/components/ui/card";
-import { HelpCircle, MessageSquare } from "lucide-react";
+import { HelpCircle, MessageSquare, Bot } from "lucide-react";
 
 interface Results {
   question: string;
@@ -108,18 +108,27 @@ const ResultList: React.FC<ResultListProps> = ({
                     Odpowiedź AI
                   </Button>
                 </AlertDialogTrigger>
+
                 <AlertDialogContent className="w-full max-w-sm sm:max-w-md">
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Odpowiedź AI</AlertDialogTitle>
+                    <AlertDialogTitle className="flex items-center gap-2 text-xl font-semibold">
+                      <Bot className="w-5 h-5 text-purple-500" />
+                      Odpowiedź AI
+                    </AlertDialogTitle>
                   </AlertDialogHeader>
+
                   <ScrollArea className="max-h-60 p-3 sm:p-4 border border-gray-300 dark:border-gray-700 rounded-md">
-                    <AlertDialogDescription className="text-sm sm:text-base whitespace-pre-wrap leading-relaxed">
+                    <div className="prose dark:prose-invert max-w-none text-sm sm:text-base whitespace-pre-wrap leading-relaxed transition-opacity duration-500 ease-in opacity-100">
                       {selectedResponse}
-                    </AlertDialogDescription>
+                    </div>
                   </ScrollArea>
+
                   <AlertDialogFooter>
-                    <AlertDialogAction onClick={() => setIsDialogOpen(false)}>
-                      OK
+                    <AlertDialogAction
+                      onClick={() => setIsDialogOpen(false)}
+                      className="px-4 py-2 text-white bg-purple-600 hover:bg-purple-700 rounded-md transition"
+                    >
+                      Zamknij
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
