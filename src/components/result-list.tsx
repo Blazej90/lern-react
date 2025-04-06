@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -17,6 +19,7 @@ import {
   CardContent,
   CardFooter,
 } from "@/components/ui/card";
+import { HelpCircle, MessageSquare } from "lucide-react";
 
 interface Results {
   question: string;
@@ -65,8 +68,8 @@ const ResultList: React.FC<ResultListProps> = ({
     <ScrollArea className="w-full max-h-96 overflow-y-auto p-4 sm:p-6">
       <ul className="space-y-4">
         {interimResult && (
-          <Card className="bg-white dark:bg-black border border-gray-300 dark:border-gray-700 shadow-md">
-            <CardContent className="text-black dark:text-white">
+          <Card className="bg-muted border border-gray-300 dark:border-gray-700 shadow-md rounded-xl">
+            <CardContent className="text-foreground">
               {interimResult}
             </CardContent>
           </Card>
@@ -75,21 +78,26 @@ const ResultList: React.FC<ResultListProps> = ({
         {results.map((result, index) => (
           <Card
             key={index}
-            className="shadow-md bg-white dark:bg-black border border-gray-300 dark:border-gray-700"
+            className="shadow-md border-l-4 border-purple-500 bg-muted dark:bg-muted/40 rounded-xl"
           >
             <CardHeader>
-              <div className="text-base sm:text-lg font-semibold text-purple-600 dark:text-purple-400">
+              <div className="flex items-center gap-2 text-base sm:text-lg font-semibold text-purple-600 dark:text-purple-400">
+                <HelpCircle className="w-5 h-5" />
                 Pytanie: {result.question}
               </div>
             </CardHeader>
+
             <CardContent>
-              <div className="text-sm sm:text-base text-black dark:text-white">
-                Odpowiedź: {result.answer}
+              <div className="flex items-start gap-2 text-sm sm:text-base text-foreground mt-2">
+                <MessageSquare className="w-5 h-5 mt-0.5 shrink-0 text-muted-foreground" />
+                <p>{result.answer}</p>
               </div>
-              <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-2">
+
+              <div className="text-xs sm:text-sm text-muted-foreground mt-3">
                 Czas odpowiedzi: {formatTime(result.time)}
               </div>
             </CardContent>
+
             <CardFooter className="flex flex-col sm:flex-row gap-2 sm:space-x-2">
               <AlertDialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <AlertDialogTrigger asChild>
