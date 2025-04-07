@@ -82,15 +82,17 @@ const ResultList: React.FC<ResultListProps> = ({
           >
             <CardHeader>
               <div className="flex items-center gap-2 text-base sm:text-lg font-semibold text-purple-600 dark:text-purple-400">
-                <HelpCircle className="w-5 h-5" />
-                Pytanie: {result.question}
+                <HelpCircle className="w-6 h-6 sm:w-5 sm:h-5" />
+                <span className="flex-1 break-words">
+                  Pytanie: {result.question}
+                </span>
               </div>
             </CardHeader>
 
             <CardContent>
-              <div className="flex items-start gap-2 text-sm sm:text-base text-foreground mt-2">
-                <MessageSquare className="w-5 h-5 mt-0.5 shrink-0 text-muted-foreground" />
-                <p>{result.answer}</p>
+              <div className="flex items-start gap-3 text-sm sm:text-base text-foreground mt-2">
+                <MessageSquare className="w-6 h-6 text-muted-foreground mt-1 shrink-0 sm:mt-0.5" />
+                <p className="leading-relaxed">{result.answer}</p>
               </div>
 
               <div className="text-xs sm:text-sm text-muted-foreground mt-3">
