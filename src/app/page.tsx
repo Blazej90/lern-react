@@ -7,6 +7,7 @@ import Image from "next/image";
 import SpeechButton from "@/components/speech-button";
 import Questions from "@/components/questions-react";
 import ResultList from "@/components/result-list";
+import { removeAIResponses } from "@/lib/ai-responses-storage";
 
 interface Result {
   question: string;
@@ -83,11 +84,12 @@ export default function Home() {
           <div className="mt-6 p-4 rounded-lg">
             <ResultList
               results={results}
-              interimResult={null}
-              setIsLoading={() => {}}
-              onDelete={(index) =>
-                setResults(results.filter((_, i) => i !== index))
-              }
+              onDelete={(question) => {
+                removeAIResponses(question);
+                setResults((prev) =>
+                  prev.filter((r) => r.question !== question),
+                );
+              }}
             />
           </div>
         )}

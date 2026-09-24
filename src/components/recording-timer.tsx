@@ -16,7 +16,7 @@ const RecordingTimer: React.FC<{
     >
       <Clock className="w-5 h-5" />
       <span className="font-mono">
-        {isRecording ? formatTime(recordingTime) : "00:00"}
+        {formatTime(recordingTime)}
       </span>
     </div>
   );
