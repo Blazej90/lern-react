@@ -14,23 +14,18 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 
 interface SpeechButtonProps {
-  question: string | null;
-  setCurrentQuestion: React.Dispatch<React.SetStateAction<string | null>>;
-  recordingTime: number;
-  setRecordingTime: React.Dispatch<React.SetStateAction<number>>;
-  setIsRecording: React.Dispatch<React.SetStateAction<boolean>>;
-  onSave: (answer: string, time: number) => void;
+  question: string;
+  onClose: () => void;
+  onSave: (question: string, answer: string, time: number) => void;
 }
 
 const SpeechButton: React.FC<SpeechButtonProps> = ({
   question,
-  setCurrentQuestion,
-  recordingTime,
-  setRecordingTime,
-  setIsRecording,
+  onClose,
   onSave,
 }) => {
   const [isClient, setIsClient] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -49,20 +44,12 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
   }, []);
 
   useEffect(() => {
-    setIsRecording(listening);
-  }, [listening, setIsRecording]);
-
-  useEffect(() => {
-    let timer: NodeJS.Timeout | null = null;
-    if (listening) {
-      timer = setInterval(() => {
-        setRecordingTime((prev) => prev + 1);
-      }, 1000);
-    }
-    return () => {
-      if (timer) clearInterval(timer);
-    };
-  }, [listening, setRecordingTime]);
+    if (!listening) return;
+    const timer = setInterval(() => {
+      setRecordingTime((prev) => prev + 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [listening]);
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -83,8 +70,6 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
 
   const getAIResponse = useCallback(
     async (userInput: string) => {
-      if (!question) return;
-
       setFeedback(null);
       setIsDrawerOpen(true);
       setIsLoading(true);
@@ -125,9 +110,16 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
     if (!answer) return;
 
     getAIResponse(answer);
-    onSave(answer, recordingTime);
+    onSave(question, answer, recordingTime);
     resetTranscript();
-  }, [transcript, recordingTime, getAIResponse, onSave, resetTranscript]);
+  }, [
+    question,
+    transcript,
+    recordingTime,
+    getAIResponse,
+    onSave,
+    resetTranscript,
+  ]);
 
   // Submit once when recording ends — whether the user pressed stop or the
   // browser ended recognition on its own. The final transcript is only
@@ -157,7 +149,7 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
 
         <MicrophoneButton
           isRecording={listening}
-          onClick={listening ? handleStopListening : handleStartListening}
+          onStart={handleStartListening}
           onStop={handleStopListening}
         />
 
@@ -172,9 +164,9 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
         <AIResponse
           feedback={feedback}
           isOpen={isDrawerOpen}
-          setIsOpen={(open) => {
-            setIsDrawerOpen(open);
-            if (!open) setCurrentQuestion(null);
+          onClose={() => {
+            setIsDrawerOpen(false);
+            onClose();
           }}
           isLoading={isLoading}
         />
