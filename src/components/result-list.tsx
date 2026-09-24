@@ -4,13 +4,14 @@ import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogContent,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Card,
   CardHeader,
@@ -96,19 +97,22 @@ const ResultList: React.FC<ResultListProps> = ({ results, onDelete }) => {
         </ul>
       </ScrollArea>
 
-      <AlertDialog
+      <Dialog
         open={selectedResponse !== null}
         onOpenChange={(open) => {
           if (!open) setSelectedResponse(null);
         }}
       >
-        <AlertDialogContent className="w-full max-w-sm sm:max-w-md">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2 text-xl font-semibold">
+        <DialogContent className="w-full max-w-sm sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl font-semibold">
               <Bot className="w-5 h-5 text-purple-500" />
               Odpowiedź AI
-            </AlertDialogTitle>
-          </AlertDialogHeader>
+            </DialogTitle>
+            <DialogDescription className="sr-only">
+              Zapisane oceny AI dla tego pytania
+            </DialogDescription>
+          </DialogHeader>
 
           <ScrollArea className="max-h-60 p-3 sm:p-4 border border-gray-300 dark:border-gray-700 rounded-md">
             <div className="text-sm sm:text-base whitespace-pre-wrap leading-relaxed">
@@ -116,13 +120,15 @@ const ResultList: React.FC<ResultListProps> = ({ results, onDelete }) => {
             </div>
           </ScrollArea>
 
-          <AlertDialogFooter>
-            <AlertDialogAction className="px-4 py-2 text-white bg-purple-600 hover:bg-purple-700 rounded-md transition">
-              Zamknij
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button className="px-4 py-2 text-white bg-purple-600 hover:bg-purple-700 rounded-md transition">
+                Zamknij
+              </Button>
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };

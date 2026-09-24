@@ -14,25 +14,24 @@ import { Loader2, Bot } from "lucide-react";
 const AIResponse: React.FC<{
   feedback: string | null;
   isOpen: boolean;
-  setIsOpen: (open: boolean) => void;
+  onClose: () => void;
   isLoading: boolean;
-}> = ({ feedback, isOpen, setIsOpen, isLoading }) => {
+}> = ({ feedback, isOpen, onClose, isLoading }) => {
   return (
     <Drawer
       open={isOpen}
       onOpenChange={(open) => {
-        if (!open) setIsOpen(false);
+        if (!open) onClose();
       }}
     >
       <DrawerContent
         autoFocus={false}
         className="w-full max-w-md sm:max-w-lg md:max-w-2xl lg:max-w-4xl mx-auto rounded-t-lg transition-transform duration-700 ease-in-out p-4 sm:p-6"
-        aria-hidden="false"
       >
         <DrawerHeader className="text-center">
           <DrawerTitle className="flex items-center justify-center gap-2 text-xl sm:text-2xl md:text-3xl font-bold text-purple-600 dark:text-purple-400">
             <Bot className="w-6 h-6" />
-            Feedback AI
+            Ocena AI
           </DrawerTitle>
         </DrawerHeader>
 
@@ -42,7 +41,7 @@ const AIResponse: React.FC<{
               <div className="flex items-center justify-center gap-3 text-base sm:text-lg font-medium text-gray-800 dark:text-white animate-in fade-in duration-500">
                 <Loader2 className="w-5 h-5 animate-spin" />
                 <span className="animate-pulse">
-                  AI is typing<span className="animate-bounce">...</span>
+                  AI analizuje odpowiedź<span className="animate-bounce">...</span>
                 </span>
               </div>
             ) : feedback.trim() ? (
@@ -60,7 +59,7 @@ const AIResponse: React.FC<{
         <div className="flex justify-center mt-4 sm:mt-6">
           <Button
             variant="outline"
-            onClick={() => setIsOpen(false)}
+            onClick={onClose}
             className="text-sm sm:text-base px-6 py-2"
           >
             Zamknij

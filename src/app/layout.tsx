@@ -6,7 +6,7 @@ import "./globals.css";
 
 export const metadata = {
   title: "Learn React",
-  description: "Learn to React with AI",
+  description: "Ćwicz pytania z React.js, odpowiadaj głosem i otrzymuj ocenę od AI.",
 };
 
 export default function RootLayout({
@@ -16,7 +16,7 @@ export default function RootLayout({
 }) {
   return (
     <ClerkProvider signInUrl="/sign-in" signUpUrl="/sign-up">
-      <html lang="en" suppressHydrationWarning>
+      <html lang="pl" suppressHydrationWarning>
         <body className="min-h-screen flex flex-col relative overflow-x-hidden bg-background text-foreground">
           <ThemeProvider
             attribute="class"
