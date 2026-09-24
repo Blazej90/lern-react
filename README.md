@@ -69,6 +69,8 @@ An interactive web app for practicing **React.js interview and exam questions by
 | Theming | [next-themes](https://github.com/pacocoursey/next-themes) |
 | Utilities | `clsx`, `tailwind-merge`, `class-variance-authority` |
 | Linting | ESLint 9 + `eslint-config-next` |
+| Testing | [Vitest](https://vitest.dev), [Testing Library](https://testing-library.com/docs/react-testing-library/intro/), [happy-dom](https://github.com/capricorn86/happy-dom) |
+| CI | GitHub Actions: lint, type check and tests on every pull request and push to `main` |
 | Client-side persistence | Browser `localStorage` (AI response history) |
 
 ---
@@ -109,7 +111,7 @@ src/
 
 ### Prerequisites
 
-- Node.js 18.18+ (required by Next.js 15)
+- Node.js 22.12+ (required by Vitest; see `.nvmrc`)
 - A [Clerk](https://dashboard.clerk.com) application (publishable and secret keys)
 - An [OpenAI API key](https://platform.openai.com/api-keys)
 - A browser that supports the Web Speech API (Chrome or Edge are recommended; Firefox does not support it)
@@ -140,6 +142,18 @@ OPENAI_API_KEY=sk-...
 | `npm run build` | Create a production build |
 | `npm run start` | Run the production build |
 | `npm run lint` | Run ESLint |
+| `npm run typecheck` | Type-check the project with `tsc` |
+| `npm test` | Run the test suite once |
+| `npm run test:watch` | Run tests in watch mode |
+
+### Tests
+
+Tests sit next to the code they cover (`*.test.ts` / `*.test.tsx`):
+
+- `src/app/api/openai/route.test.ts`: the API route with Clerk and OpenAI mocked. It covers auth (401), validation (400), rate limiting (429), the OpenAI call options, error handling, and that user answers are not logged.
+- `src/lib/*.test.ts`: `formatTime` and `cn`, the rate limiter, and the `localStorage` helpers (including corrupted and blocked storage).
+- `src/data/react-questions.test.ts`: the question bank and `isKnownQuestion`.
+- `src/components/question-picker.test.tsx`: the component in happy-dom, including the no-immediate-repeat rule.
 
 ---
 
