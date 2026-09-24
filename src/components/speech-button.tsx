@@ -129,7 +129,14 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
       }
     } catch (error) {
       console.error("Error getting response from OpenAI:", error);
-      setFeedback("Przepraszamy, wystąpił błąd przy uzyskiwaniu odpowiedzi.");
+      const serverError = axios.isAxiosError(error)
+        ? error.response?.data?.error
+        : null;
+      setFeedback(
+        typeof serverError === "string"
+          ? serverError
+          : "Przepraszamy, wystąpił błąd przy uzyskiwaniu odpowiedzi.",
+      );
     } finally {
       setIsLoading(false);
     }
