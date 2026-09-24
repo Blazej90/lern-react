@@ -1,11 +1,5 @@
 import "regenerator-runtime/runtime";
-import {
-  ClerkProvider,
-  SignedIn,
-  SignedOut,
-  RedirectToSignIn,
-  UserButton,
-} from "@clerk/nextjs";
+import { ClerkProvider, SignedIn, UserButton } from "@clerk/nextjs";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ModeToggle } from "@/components/mode-toggle";
 import "./globals.css";
@@ -21,7 +15,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <ClerkProvider>
+    <ClerkProvider signInUrl="/sign-in" signUpUrl="/sign-up">
       <html lang="en" suppressHydrationWarning>
         <body className="min-h-screen flex flex-col relative overflow-x-hidden bg-background text-foreground">
           <ThemeProvider
@@ -40,18 +34,12 @@ export default function RootLayout({
               <SignedIn>
                 <UserButton />
               </SignedIn>
-              <SignedOut>
-                <RedirectToSignIn />
-              </SignedOut>
-              <ModeToggle />
+              <div className="ml-auto">
+                <ModeToggle />
+              </div>
             </header>
 
-            <main className="flex-grow w-full">
-              <SignedOut>
-                <RedirectToSignIn />
-              </SignedOut>
-              <SignedIn>{children}</SignedIn>
-            </main>
+            <main className="flex-grow w-full">{children}</main>
           </ThemeProvider>
         </body>
       </html>

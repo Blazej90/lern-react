@@ -2,9 +2,8 @@
 
 import { useUser } from "@clerk/nextjs";
 import "regenerator-runtime/runtime";
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
 import SpeechButton from "@/components/speech-button";
 import Questions from "@/components/questions-react";
 import ResultList from "@/components/result-list";
@@ -16,26 +15,13 @@ interface Result {
 }
 
 export default function Home() {
-  const { isLoaded, isSignedIn } = useUser();
-  const router = useRouter();
+  // Access is enforced by middleware; this only avoids rendering before Clerk loads.
+  const { isSignedIn } = useUser();
 
   const [currentQuestion, setCurrentQuestion] = useState<string | null>(null);
   const [recordingTime, setRecordingTime] = useState<number>(0);
   const [isRecording, setIsRecording] = useState<boolean>(false);
   const [results, setResults] = useState<Result[]>([]);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    if (isLoaded && !isSignedIn) {
-      router.push("/sign-in");
-    }
-  }, [isLoaded, isSignedIn, router]);
-
-  useEffect(() => {
-    if (isLoaded) {
-      setMounted(true);
-    }
-  }, [isLoaded]);
 
   if (!isSignedIn) return null;
 
