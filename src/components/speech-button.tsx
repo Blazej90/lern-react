@@ -1,15 +1,15 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import SpeechRecognition, {
   useSpeechRecognition,
 } from "react-speech-recognition";
 import RecordingTimer from "@/components/recording-timer";
 import MicrophoneButton from "@/components/microphone-button";
-import ResultList from "@/components/result-list";
 import axios from "axios";
 import "regenerator-runtime/runtime";
 import AIResponse from "@/components/ai-response";
+import { addAIResponse } from "@/lib/ai-responses-storage";
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -72,75 +72,73 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
   }, [transcript]);
 
   const handleStartListening = () => {
-    SpeechRecognition.startListening({ continuous: true });
+    resetTranscript();
+    setRecordingTime(0);
+    SpeechRecognition.startListening({ continuous: true, language: "pl-PL" });
   };
 
   const handleStopListening = () => {
     SpeechRecognition.stopListening();
-    if (transcript.trim()) {
-      setTimeout(() => {
-        setIsDrawerOpen(true);
-      }, 500);
-    }
   };
 
-  useEffect(() => {
-    if (!listening && transcript.trim()) {
-      const timeSpent = recordingTime;
-      const answer = transcript.trim();
+  const getAIResponse = useCallback(
+    async (userInput: string) => {
+      if (!question) return;
 
-      getAIResponse(answer);
-      onSave(answer, timeSpent);
+      setFeedback(null);
+      setIsDrawerOpen(true);
+      setIsLoading(true);
 
-      resetTranscript();
-    }
-  }, [listening]);
+      try {
+        const response = await axios.post("/api/openai", {
+          userAnswer: userInput,
+          question,
+        });
 
-  const getAIResponse = async (userInput: string) => {
-    if (!userInput.trim()) return;
+        const raw = response.data.aiAnswer;
+        const aiAnswer = raw && raw.trim().length > 0 ? raw : null;
 
-    setFeedback(null);
-    setIsDrawerOpen(true);
-    setIsLoading(true);
+        setFeedback(aiAnswer);
 
-    try {
-      const response = await axios.post("/api/openai", {
-        userAnswer: userInput,
-        question,
-      });
-
-      const raw = response.data.aiAnswer;
-      const aiAnswer = raw && raw.trim().length > 0 ? raw : null;
-
-      setFeedback(aiAnswer);
-
-      if (aiAnswer) {
-        const key = question || "Nieznane pytanie";
-        const storedResponses = JSON.parse(
-          localStorage.getItem("aiResponses") || "{}"
-        );
-
-        if (!Array.isArray(storedResponses[key])) {
-          storedResponses[key] = [];
+        if (aiAnswer) {
+          addAIResponse(question, aiAnswer);
         }
-
-        storedResponses[key].push(aiAnswer);
-        localStorage.setItem("aiResponses", JSON.stringify(storedResponses));
+      } catch (error) {
+        console.error("Error getting response from OpenAI:", error);
+        const serverError = axios.isAxiosError(error)
+          ? error.response?.data?.error
+          : null;
+        setFeedback(
+          typeof serverError === "string"
+            ? serverError
+            : "Przepraszamy, wystąpił błąd przy uzyskiwaniu odpowiedzi.",
+        );
+      } finally {
+        setIsLoading(false);
       }
-    } catch (error) {
-      console.error("Error getting response from OpenAI:", error);
-      const serverError = axios.isAxiosError(error)
-        ? error.response?.data?.error
-        : null;
-      setFeedback(
-        typeof serverError === "string"
-          ? serverError
-          : "Przepraszamy, wystąpił błąd przy uzyskiwaniu odpowiedzi.",
-      );
-    } finally {
-      setIsLoading(false);
+    },
+    [question],
+  );
+
+  const submitAnswer = useCallback(() => {
+    const answer = transcript.trim();
+    if (!answer) return;
+
+    getAIResponse(answer);
+    onSave(answer, recordingTime);
+    resetTranscript();
+  }, [transcript, recordingTime, getAIResponse, onSave, resetTranscript]);
+
+  // Submit once when recording ends — whether the user pressed stop or the
+  // browser ended recognition on its own. The final transcript is only
+  // available after `listening` flips to false.
+  const wasListening = useRef(false);
+  useEffect(() => {
+    if (wasListening.current && !listening) {
+      submitAnswer();
     }
-  };
+    wasListening.current = listening;
+  }, [listening, submitAnswer]);
 
   if (!isClient) return null;
 

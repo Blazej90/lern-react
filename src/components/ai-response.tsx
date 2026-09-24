@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React from "react";
 import {
   Drawer,
   DrawerContent,
@@ -17,12 +17,6 @@ const AIResponse: React.FC<{
   setIsOpen: (open: boolean) => void;
   isLoading: boolean;
 }> = ({ feedback, isOpen, setIsOpen, isLoading }) => {
-  useEffect(() => {
-    if (feedback) {
-      localStorage.setItem("aiResponse", feedback);
-    }
-  }, [feedback]);
-
   return (
     <Drawer
       open={isOpen}
