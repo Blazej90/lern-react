@@ -170,3 +170,72 @@ The app is ready to deploy on [Vercel](https://vercel.com). Add the three enviro
 - The rate limit is kept in memory per server instance. On serverless platforms it slows down abuse but is not a strict global limit. Use a shared store (e.g. Upstash Redis) for that.
 - The Clerk sign-in and sign-up forms are in English. Clerk's `plPL` localization can translate them.
 - The question bank lives in `src/data/react-questions.ts`. To add questions, edit that array. The API accepts only questions from this list.
+
+---
+
+## Roadmap
+
+### Stage 1: Persistent answers and progress tracking (next)
+
+**Goal:** store every answer and its AI evaluation in a database, then let an AI agent analyze past answers and track each user's progress over time.
+
+#### Recommended database: PostgreSQL on [Neon](https://neon.tech) with [Drizzle ORM](https://orm.drizzle.team)
+
+| Why | Details |
+|---|---|
+| The data is relational | Users → attempts → evaluations → topics. Progress is an aggregation (averages, trends per topic, weakest areas), which SQL handles well (`GROUP BY`, window functions). |
+| Serverless-friendly | Neon's HTTP/WebSocket driver works in Vercel functions without connection-pool issues. It scales to zero and has a free tier. |
+| Vercel integration | Available in the Vercel Marketplace, which injects `DATABASE_URL` into the project automatically. |
+| Room for AI features | The `pgvector` extension enables semantic search over past answers later (for example "find answers similar to this one" or tracking how an explanation evolves), with no second database. |
+| Type safety | Drizzle generates TypeScript types from the schema, has lightweight SQL-first migrations, and works in serverless and edge runtimes. |
+
+**Alternatives considered:**
+- **Supabase (Postgres):** a good option with the same SQL benefits. Its main extras (auth, storage, realtime) overlap with Clerk, so Neon is the leaner choice here.
+- **MongoDB:** flexible documents, but progress queries across attempts and topics are more natural in SQL.
+- **Upstash Redis:** not a primary store for this data. It is still the right tool for the global rate limit (see Stage 2).
+
+#### Proposed data model
+
+```
+users             id (Clerk userId), created_at
+questions         id, text, topic, difficulty           ← migrated from src/data/react-questions.ts
+attempts          id, user_id, question_id, transcript, duration_seconds, created_at
+evaluations       id, attempt_id, score (0–10), strengths[], gaps[], feedback_text, model, created_at
+progress_reports  id, user_id, summary, weak_topics[], recommended_questions[], created_at
+```
+
+#### Implementation plan
+
+1. **Structured evaluations:** switch the OpenAI call to [Structured Outputs](https://platform.openai.com/docs/guides/structured-outputs) (JSON schema) so each answer gets a numeric `score`, `strengths`, `gaps` and `topic` next to the feedback text. Progress can only be measured if scores are consistent and machine-readable.
+2. **Database setup:** Neon project, Drizzle schema and migrations, and `DATABASE_URL` in `.env.local` and Vercel.
+3. **Persist attempts:** `/api/openai` saves the attempt and evaluation in the same request, keyed by the Clerk `userId`. This replaces the `localStorage` history (`ai-responses-storage.ts`). Existing local history can optionally be imported on first sign-in.
+4. **Progress in SQL:** average score per topic, trend over the last N attempts, most improved and weakest topics, and questions never answered.
+5. **Progress agent:** an endpoint that loads the user's recent attempts (with the SQL aggregates) and asks the model for a progress report: what improved, recurring gaps, and which questions to practice next. Cache the report in `progress_reports` and regenerate it only after new attempts, to control cost.
+6. **Adaptive question picking:** favor weak topics and questions not yet answered, instead of picking uniformly at random.
+7. **Progress dashboard:** a `/progress` page with score over time, per-topic breakdown, and the latest agent report.
+8. **Privacy:** users can delete their history (a "delete my data" action). Keep a retention policy for stored transcripts, which are personal data (GDPR).
+
+### Stage 2: Hardening and production readiness
+
+- **Global rate limit:** move `src/lib/rate-limit.ts` to [Upstash Redis](https://upstash.com) (`@upstash/ratelimit`). The in-memory limiter is only per server instance.
+- **Error monitoring:** [Sentry](https://sentry.io) for server and client errors, plus Vercel Analytics or Speed Insights.
+- **Spending guardrails:** a per-user daily cap on AI requests stored in the database, plus usage alerts in the OpenAI dashboard.
+- **End-to-end tests:** [Playwright](https://playwright.dev) for the main flow: sign-in → draw a question → answer → feedback, with Clerk testing tokens and a mocked AI endpoint.
+- **Production build in CI:** add `next build` to GitHub Actions using Clerk test keys stored as repository secrets.
+- **Automated dependency updates:** Dependabot or Renovate, grouped and merged only when CI passes.
+
+### Stage 3: Learning experience
+
+- **Text answer mode:** a textarea fallback for browsers without the Web Speech API (Firefox) and for users who prefer typing.
+- **Streaming feedback:** stream the AI response into the drawer as it is generated, instead of waiting for the whole answer.
+- **Richer question bank:** categories, difficulty levels, and more topics (React 19 features, Server Components, Next.js), managed in the database instead of a hard-coded array.
+- **Practice modes:** a "mock interview" session with several questions in a row and a summary at the end, and spaced repetition for questions answered poorly.
+- **Localization:** translate the Clerk forms (`@clerk/localizations`, `plPL`) and optionally add an English UI with matching speech recognition (`en-US`).
+
+### Stage 4: Maintenance and upgrades
+
+- **Framework upgrades:** move to React 19 and Next.js 16 once the dependencies (`react-speech-recognition`, Clerk) support them.
+- **Linting:** migrate from the deprecated `next lint` to the ESLint CLI (`npx @next/codemod@canary next-lint-to-eslint-cli .`).
+- **Browser data:** refresh it with `npx update-browserslist-db@latest`, and keep it fresh through the dependency bot.
+- **AI model:** make the model configurable through an environment variable and periodically compare newer or cheaper models against a small set of reference answers before switching.
+- **Package manager:** optionally migrate to pnpm for faster installs and stricter dependency resolution.
