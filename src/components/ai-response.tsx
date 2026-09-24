@@ -39,14 +39,14 @@ const AIResponse: React.FC<{
         <div className="p-2 sm:p-4 rounded-lg">
           <ScrollArea className="max-h-[60vh] sm:max-h-[70vh] overflow-y-auto rounded-lg">
             {isLoading || feedback === null ? (
-              <div className="flex items-center justify-center gap-3 text-base sm:text-lg font-medium text-gray-800 dark:text-white animate-fade-in">
+              <div className="flex items-center justify-center gap-3 text-base sm:text-lg font-medium text-gray-800 dark:text-white animate-in fade-in duration-500">
                 <Loader2 className="w-5 h-5 animate-spin" />
                 <span className="animate-pulse">
                   AI is typing<span className="animate-bounce">...</span>
                 </span>
               </div>
             ) : feedback.trim() ? (
-              <div className="prose dark:prose-invert max-w-none text-base sm:text-lg whitespace-pre-wrap leading-relaxed transition-opacity duration-500 ease-in opacity-100">
+              <div className="text-base sm:text-lg whitespace-pre-wrap leading-relaxed animate-in fade-in duration-500">
                 {feedback}
               </div>
             ) : (

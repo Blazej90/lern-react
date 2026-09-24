@@ -29,9 +29,9 @@ export default function Home() {
   return (
     <div className="relative min-h-screen flex flex-col items-center justify-center px-4 overflow-hidden">
       <div className="absolute top-[-20%] left-[-20%] w-[28rem] h-[28rem] bg-purple-400/30 dark:bg-purple-500/40 rounded-full blur-3xl animate-blob z-[-1]" />
-      <div className="absolute top-[15%] right-[-20%] w-[30rem] h-[30rem] bg-blue-300/30 dark:bg-blue-500/40 rounded-full blur-3xl animate-blob animation-delay-2000 z-[-1]" />
-      <div className="absolute bottom-[-10%] left-[30%] w-[34rem] h-[34rem] bg-pink-300/20 dark:bg-pink-500/30 rounded-full blur-3xl animate-blob animation-delay-4000 z-[-1]" />
-      <div className="absolute top-[5%] left-1/2 -translate-x-1/2 w-[40rem] h-[40rem] bg-indigo-300/20 dark:bg-indigo-500/30 rounded-full blur-[150px] animate-blob animation-delay-1000 z-[-1]" />
+      <div className="absolute top-[15%] right-[-20%] w-[30rem] h-[30rem] bg-blue-300/30 dark:bg-blue-500/40 rounded-full blur-3xl animate-blob delay-2000 z-[-1]" />
+      <div className="absolute bottom-[-10%] left-[30%] w-[34rem] h-[34rem] bg-pink-300/20 dark:bg-pink-500/30 rounded-full blur-3xl animate-blob delay-4000 z-[-1]" />
+      <div className="absolute top-[5%] left-1/2 -translate-x-1/2 w-[40rem] h-[40rem] bg-indigo-300/20 dark:bg-indigo-500/30 rounded-full blur-[150px] animate-blob delay-1000 z-[-1]" />
 
       <div className="relative w-full max-w-4xl">
         <Image
