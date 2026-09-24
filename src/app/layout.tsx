@@ -1,5 +1,6 @@
 import "regenerator-runtime/runtime";
-import { ClerkProvider, SignedIn, UserButton } from "@clerk/nextjs";
+import { ClerkProvider } from "@clerk/nextjs";
+import { UserMenu } from "@/components/user-menu";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ModeToggle } from "@/components/mode-toggle";
 import "./globals.css";
@@ -31,9 +32,7 @@ export default function RootLayout({
             </div>
 
             <header className="flex justify-between items-center p-4">
-              <SignedIn>
-                <UserButton />
-              </SignedIn>
+              <UserMenu />
               <div className="ml-auto">
                 <ModeToggle />
               </div>
