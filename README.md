@@ -11,12 +11,12 @@ An interactive web app for practicing **React.js interview and exam questions by
 ## Features
 
 - **Authentication**: all pages are protected with [Clerk](https://clerk.com). Signed-out users are redirected to the sign-in page, and signed-in users see their avatar menu (`UserButton`) in the header.
-- **Random question picker**: draws a question from a built-in bank of 28 React topics (hooks, Virtual DOM, props, keys, Context, Redux, React Router, `React.memo`, Suspense, lazy loading, HOCs, controlled and uncontrolled components, TypeScript with React, and more).
-- **Voice answers (speech-to-text)**: records your answer with the browser's Web Speech API through `react-speech-recognition` in continuous mode. The transcript appears live in an auto-resizing textarea.
-- **Recording timer**: shows how long you have been answering (`mm:ss`), and the time is saved with each answer.
+- **Random question picker**: draws a question from a built-in bank of 28 React topics (hooks, Virtual DOM, props, keys, Context, Redux, React Router, `React.memo`, Suspense, lazy loading, HOCs, controlled and uncontrolled components, TypeScript with React, and more). The same question never comes up twice in a row.
+- **Voice answers (speech-to-text)**: records your answer in Polish (`pl-PL`) with the browser's Web Speech API through `react-speech-recognition` in continuous mode. The transcript appears live in an auto-resizing textarea.
+- **Recording timer**: shows how long you have been answering (`mm:ss`). It resets on each new recording, and the time is saved with each answer.
 - **AI feedback**: when recording stops, the transcript and question are sent to `/api/openai`. The endpoint asks `gpt-4o-mini` to review the answer as a friendly React teacher. The feedback opens in a bottom drawer (Vaul).
 - **Answer history**: each answered question appears as a card with your transcript and response time. Answering the same question again replaces the earlier card, and you can delete cards.
-- **Saved AI responses**: every AI response is stored in `localStorage` under its question, so you can open all earlier versions ("Version 1, Version 2, …") in a dialog.
+- **Saved AI responses**: AI responses are stored in `localStorage` under their question (the latest 5 per question), so you can open earlier versions ("Wersja 1, Wersja 2, …") in a dialog. Deleting a card also deletes its saved responses.
 - **Light, dark and system themes**: a theme switcher built with `next-themes`.
 - **Responsive, animated UI**: a mobile-first layout with blurred gradient "blob" backgrounds, built with Tailwind CSS and shadcn/ui components.
 
@@ -34,18 +34,20 @@ An interactive web app for practicing **React.js interview and exam questions by
        │  5. { aiAnswer } → drawer +         │  Next.js Route Handler       │
        │     localStorage history            │  src/app/api/openai/route.ts │
        │                                     │  • Clerk auth() check (401)  │
-       └──────────────────────────────────── │  • input validation (400)    │
+       │                                     │  • rate limit (429)          │
+       └──────────────────────────────────── │  • known question, answer    │
+                                             │    ≤ 2000 chars (400)        │
                                              │  4. OpenAI Chat Completions  │
                                              │     gpt-4o-mini, 300 tokens, │
-                                             │     9 s timeout              │
+                                             │     9 s timeout, no retries  │
                                              └─────────────────────────────┘
 ```
 
-1. `middleware.ts` (Clerk middleware) blocks every non-public route for unauthenticated users. Only `/sign-in` and `/sign-up` are public.
-2. On the home page, the user draws a question (`questions-react.tsx`).
+1. `middleware.ts` (Clerk middleware) protects every route except `/sign-in` and `/sign-up`. Signed-out users are redirected to the app's own sign-in page.
+2. On the home page, the user draws a question (`question-picker.tsx`).
 3. `speech-button.tsx` starts and stops speech recognition, runs the timer, and sends the transcript to the API once recording stops.
-4. The API route checks that `OPENAI_API_KEY` is set and that a Clerk session exists. It validates the payload, then calls OpenAI with a system prompt ("You are a React teacher who evaluates students' answers…"). The call is wrapped in a 9-second timeout to avoid serverless function timeouts in production.
-5. The feedback is shown in `ai-response.tsx` and saved in `localStorage`. The answer is added to `result-list.tsx`.
+4. The API route checks that `OPENAI_API_KEY` is set and that a Clerk session exists. It applies a per-user rate limit (10 requests per minute) and accepts only questions from the shared bank (`src/data/react-questions.ts`) with answers up to 2000 characters. This prevents the endpoint from being used as a general-purpose GPT proxy. It then calls OpenAI with a system prompt ("You are a React teacher who evaluates students' answers…"). The call uses the SDK's 9-second timeout with retries disabled, so it fits within serverless function limits and aborts the request when it runs too long.
+5. The feedback is shown in `ai-response.tsx` and saved in `localStorage` (`src/lib/ai-responses-storage.ts`). The answer is added to `result-list.tsx`.
 
 ---
 
@@ -61,7 +63,7 @@ An interactive web app for practicing **React.js interview and exam questions by
 | Speech recognition | [`react-speech-recognition`](https://github.com/JamesBrill/react-speech-recognition) (Web Speech API) + `regenerator-runtime` polyfill |
 | HTTP client | [Axios](https://axios-http.com) |
 | Styling | [Tailwind CSS 3](https://tailwindcss.com), `tailwindcss-animate`, PostCSS, Autoprefixer |
-| UI components | [shadcn/ui](https://ui.shadcn.com) ("new-york" style) built on [Radix UI](https://www.radix-ui.com) primitives (Alert Dialog, Dialog, Dropdown Menu, Scroll Area, Slot) |
+| UI components | [shadcn/ui](https://ui.shadcn.com) ("new-york" style) built on [Radix UI](https://www.radix-ui.com) primitives (Dialog, Dropdown Menu, Scroll Area, Slot) |
 | Drawer | [Vaul](https://vaul.emilkowal.ski) |
 | Icons | [Lucide React](https://lucide.dev) |
 | Theming | [next-themes](https://github.com/pacocoursey/next-themes) |
@@ -76,14 +78,14 @@ An interactive web app for practicing **React.js interview and exam questions by
 ```
 src/
 ├── app/
-│   ├── api/openai/route.ts   # POST endpoint: auth check + OpenAI feedback
-│   ├── sign-in/page.tsx      # Clerk sign-in page
-│   ├── sign-up/page.tsx      # Clerk sign-up page
-│   ├── layout.tsx            # ClerkProvider, ThemeProvider, header, auth gating
+│   ├── api/openai/route.ts   # POST endpoint: auth, validation, rate limit, OpenAI feedback
+│   ├── sign-in/[[...sign-in]]/page.tsx  # Clerk sign-in page (catch-all route)
+│   ├── sign-up/[[...sign-up]]/page.tsx  # Clerk sign-up page (catch-all route)
+│   ├── layout.tsx            # ClerkProvider, ThemeProvider, header, background blobs
 │   ├── page.tsx              # Main learning screen
-│   └── globals.css           # Tailwind layers, CSS variables, blob animations
+│   └── globals.css           # Tailwind layers, CSS variables
 ├── components/
-│   ├── questions-react.tsx   # Question bank + random picker
+│   ├── question-picker.tsx   # Random question picker (no immediate repeats)
 │   ├── speech-button.tsx     # Speech recognition, timer, API call
 │   ├── microphone-button.tsx # Start/stop recording button
 │   ├── recording-timer.tsx   # mm:ss timer
@@ -92,7 +94,12 @@ src/
 │   ├── mode-toggle.tsx       # Light/dark/system switch
 │   ├── theme-provider.tsx    # next-themes wrapper
 │   └── ui/                   # shadcn/ui components
-├── lib/utils.ts              # cn() helper, formatTime()
+├── data/react-questions.ts   # Question bank shared by client and API
+├── lib/
+│   ├── utils.ts              # cn() helper, formatTime()
+│   ├── ai-responses-storage.ts  # Guarded localStorage for AI response history
+│   └── rate-limit.ts         # In-memory per-user rate limiter
+├── types/css.d.ts            # Type declaration for CSS imports
 └── middleware.ts             # Clerk route protection
 ```
 
@@ -145,5 +152,7 @@ The app is ready to deploy on [Vercel](https://vercel.com). Add the three enviro
 ## Notes and limitations
 
 - Answer history lives in React state and resets on reload. Only AI responses are kept in `localStorage`, and only in the current browser.
-- Speech recognition uses the browser's default language. Answering in Polish works best when the browser or OS language is set to Polish.
-- The question bank is hard-coded in `src/components/questions-react.tsx`. To add questions, edit that array.
+- Speech recognition is set to Polish (`pl-PL`), so answers in other languages will be transcribed poorly.
+- The rate limit is kept in memory per server instance. On serverless platforms it slows down abuse but is not a strict global limit. Use a shared store (e.g. Upstash Redis) for that.
+- The Clerk sign-in and sign-up forms are in English. Clerk's `plPL` localization can translate them.
+- The question bank lives in `src/data/react-questions.ts`. To add questions, edit that array. The API accepts only questions from this list.
