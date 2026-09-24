@@ -111,7 +111,7 @@ const ResultList: React.FC<ResultListProps> = ({ results, onDelete }) => {
           </AlertDialogHeader>
 
           <ScrollArea className="max-h-60 p-3 sm:p-4 border border-gray-300 dark:border-gray-700 rounded-md">
-            <div className="prose dark:prose-invert max-w-none text-sm sm:text-base whitespace-pre-wrap leading-relaxed transition-opacity duration-500 ease-in opacity-100">
+            <div className="text-sm sm:text-base whitespace-pre-wrap leading-relaxed">
               {selectedResponse}
             </div>
           </ScrollArea>
