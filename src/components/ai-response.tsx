@@ -11,14 +11,15 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader2, Bot } from "lucide-react";
 import EvaluationView from "@/components/evaluation-view";
-import type { StoredAIResponse } from "@/lib/ai-responses-storage";
+import type { Feedback } from "@/lib/evaluation";
 
 const AIResponse: React.FC<{
-  feedback: StoredAIResponse | null;
+  feedback: Feedback | null;
+  notice?: string | null;
   isOpen: boolean;
   onClose: () => void;
   isLoading: boolean;
-}> = ({ feedback, isOpen, onClose, isLoading }) => {
+}> = ({ feedback, notice, isOpen, onClose, isLoading }) => {
   return (
     <Drawer
       open={isOpen}
@@ -53,6 +54,12 @@ const AIResponse: React.FC<{
             )}
           </ScrollArea>
         </div>
+
+        {notice && (
+          <p className="text-center text-sm text-amber-600 dark:text-amber-400">
+            {notice}
+          </p>
+        )}
 
         <div className="flex justify-center mt-4 sm:mt-6">
           <Button

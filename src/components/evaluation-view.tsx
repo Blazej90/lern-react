@@ -1,7 +1,6 @@
 import React from "react";
 import { CheckCircle2, Lightbulb, XCircle } from "lucide-react";
-import { MAX_SCORE, type Evaluation } from "@/lib/evaluation";
-import type { StoredAIResponse } from "@/lib/ai-responses-storage";
+import { MAX_SCORE, type Evaluation, type Feedback } from "@/lib/evaluation";
 import { cn } from "@/lib/utils";
 
 function scoreColor(score: number) {
@@ -66,7 +65,7 @@ const StructuredEvaluation: React.FC<{ evaluation: Evaluation }> = ({
   </div>
 );
 
-const EvaluationView: React.FC<{ response: StoredAIResponse }> = ({
+const EvaluationView: React.FC<{ response: Feedback }> = ({
   response,
 }) =>
   typeof response === "string" ? (

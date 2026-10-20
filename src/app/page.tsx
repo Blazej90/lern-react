@@ -2,39 +2,55 @@
 
 import { useUser } from "@clerk/nextjs";
 import "regenerator-runtime/runtime";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
+import axios from "axios";
 import SpeechButton from "@/components/speech-button";
 import QuestionPicker from "@/components/question-picker";
 import ResultList from "@/components/result-list";
-import { removeAIResponses } from "@/lib/ai-responses-storage";
-
-interface Result {
-  question: string;
-  answer: string;
-  time: number;
-}
+import type { Attempt } from "@/lib/attempts";
 
 export default function Home() {
   // Access is enforced by middleware; this only avoids rendering before Clerk loads.
   const { isSignedIn } = useUser();
 
   const [currentQuestion, setCurrentQuestion] = useState<string | null>(null);
-  const [results, setResults] = useState<Result[]>([]);
+  // Newest first, as returned by /api/attempts.
+  const [attempts, setAttempts] = useState<Attempt[]>([]);
+  const [historyError, setHistoryError] = useState<string | null>(null);
 
-  const saveResult = useCallback(
-    (question: string, answer: string, time: number) => {
-      setResults((prev) => [
-        ...prev.filter((r) => r.question !== question),
-        { question, answer, time },
-      ]);
-    },
-    [],
-  );
+  useEffect(() => {
+    if (!isSignedIn) return;
 
-  const deleteResult = useCallback((question: string) => {
-    removeAIResponses(question);
-    setResults((prev) => prev.filter((r) => r.question !== question));
+    let cancelled = false;
+    axios
+      .get<{ attempts: Attempt[] }>("/api/attempts")
+      .then((res) => {
+        if (!cancelled) setAttempts(res.data.attempts);
+      })
+      .catch((error) => {
+        console.error("Error loading history:", error);
+        if (!cancelled) setHistoryError("Nie udało się wczytać historii odpowiedzi.");
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isSignedIn]);
+
+  const addAttempt = useCallback((attempt: Attempt) => {
+    setAttempts((prev) => [attempt, ...prev]);
+  }, []);
+
+  const deleteQuestion = useCallback(async (question: string) => {
+    try {
+      await axios.delete("/api/attempts", { data: { question } });
+      setHistoryError(null);
+      setAttempts((prev) => prev.filter((a) => a.question !== question));
+    } catch (error) {
+      console.error("Error deleting attempts:", error);
+      setHistoryError("Nie udało się usunąć odpowiedzi. Spróbuj ponownie.");
+    }
   }, []);
 
   if (!isSignedIn) return null;
@@ -70,14 +86,18 @@ export default function Home() {
             <SpeechButton
               question={currentQuestion}
               onClose={() => setCurrentQuestion(null)}
-              onSave={saveResult}
+              onSaved={addAttempt}
             />
           </div>
         )}
 
-        {results.length > 0 && (
+        {historyError && (
+          <p className="mt-6 text-center text-sm text-red-500">{historyError}</p>
+        )}
+
+        {attempts.length > 0 && (
           <div className="mt-6 p-4 rounded-lg">
-            <ResultList results={results} onDelete={deleteResult} />
+            <ResultList attempts={attempts} onDelete={deleteQuestion} />
           </div>
         )}
       </div>

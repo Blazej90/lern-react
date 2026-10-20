@@ -15,8 +15,7 @@ An interactive web app for practicing **React.js interview and exam questions by
 - **Voice answers (speech-to-text)**: records your answer in Polish (`pl-PL`) with the browser's Web Speech API through `react-speech-recognition` in continuous mode. The transcript appears live in an auto-resizing textarea.
 - **Recording timer**: shows how long you have been answering (`mm:ss`). It resets on each new recording, and the time is saved with each answer.
 - **AI evaluation**: when recording stops, the transcript and question are sent to `/api/openai`. The endpoint asks `gpt-4o-mini` (configurable with `OPENAI_MODEL`) to grade the answer as a friendly React teacher. It uses Structured Outputs, so every evaluation has the same shape: a score from 0 to 10, a short summary, what was right, what was missing, and tips. The evaluation opens in a bottom drawer (Vaul).
-- **Answer history**: each answered question appears as a card with your transcript and response time. Answering the same question again replaces the earlier card, and you can delete cards.
-- **Saved AI responses**: AI evaluations are stored in `localStorage` under their question (the latest 5 per question), so you can open earlier versions ("Wersja 1, Wersja 2, …") in a dialog. Deleting a card also deletes its saved responses.
+- **Answer history in the database**: every answer and its evaluation are saved in PostgreSQL (Neon) under your Clerk account, so the history survives reloads and is available on any device. Each question has one card with your latest transcript, score, response time and date. "Odpowiedź AI" opens every evaluation of that question ("Wersja 1, Wersja 2, …"), and "Usuń" deletes all your answers to it.
 - **Light, dark and system themes**: a theme switcher built with `next-themes`.
 - **Responsive, animated UI**: a mobile-first layout with blurred gradient "blob" backgrounds, built with Tailwind CSS and shadcn/ui components.
 
@@ -27,12 +26,12 @@ An interactive web app for practicing **React.js interview and exam questions by
 ```
 ┌──────────────┐   1. pick random question
 │   Browser    │   2. record voice → Web Speech API → transcript
-│  (Next.js    │   3. POST /api/openai { question, userAnswer }
+│  (Next.js    │   3. POST /api/openai { question, userAnswer, durationSeconds }
 │   client)    │ ─────────────────────────────────────────────┐
 └──────────────┘                                              ▼
        ▲                                     ┌─────────────────────────────┐
-       │  5. { evaluation } → drawer +       │  Next.js Route Handler       │
-       │     localStorage history            │  src/app/api/openai/route.ts │
+       │  6. { evaluation, attempt } →       │  Next.js Route Handler       │
+       │     drawer + history cards          │  src/app/api/openai/route.ts │
        │                                     │  • Clerk auth() check (401)  │
        │                                     │  • rate limit (429)          │
        └──────────────────────────────────── │  • known question, answer    │
@@ -40,14 +39,17 @@ An interactive web app for practicing **React.js interview and exam questions by
                                              │  4. OpenAI Chat Completions  │
                                              │     gpt-4o-mini, JSON schema │
                                              │     600 tokens, 9 s timeout  │
+                                             │  5. save attempt + evaluation│
+                                             │     in Neon (one transaction)│
                                              └─────────────────────────────┘
 ```
 
 1. `middleware.ts` (Clerk middleware) protects every route except `/sign-in` and `/sign-up`. Signed-out users are redirected to the app's own sign-in page.
 2. On the home page, the user draws a question (`question-picker.tsx`).
-3. `speech-button.tsx` starts and stops speech recognition, runs the timer, and sends the transcript to the API once recording stops.
+3. `speech-button.tsx` starts and stops speech recognition, runs the timer, and sends the transcript and the recording time to the API once recording stops.
 4. The API route checks that `OPENAI_API_KEY` is set and that a Clerk session exists. It applies a per-user rate limit (10 requests per minute) and accepts only questions from the shared bank (`src/data/react-questions.ts`) with answers up to 2000 characters. This prevents the endpoint from being used as a general-purpose GPT proxy. It then calls OpenAI with a system prompt ("You are a React teacher who evaluates students' answers…"). The reply must match a JSON schema (Structured Outputs, `src/lib/evaluation.ts`); a truncated or invalid reply returns 502. The call uses the SDK's 9-second timeout with retries disabled, so it fits within serverless function limits and aborts the request when it runs too long.
-5. The evaluation is shown in `ai-response.tsx` and saved in `localStorage` (`src/lib/ai-responses-storage.ts`). The answer is added to `result-list.tsx`.
+5. The route saves the user, the attempt and the evaluation in one transaction (`src/db/attempts.ts`). If saving fails, the evaluation is still returned and the drawer says it was not saved.
+6. The evaluation is shown in `ai-response.tsx`, and the attempt is added to `result-list.tsx`. On page load, the history comes from `GET /api/attempts`, and "Usuń" calls `DELETE /api/attempts`.
 
 ---
 
@@ -73,7 +75,6 @@ An interactive web app for practicing **React.js interview and exam questions by
 | Testing | [Vitest](https://vitest.dev), [Testing Library](https://testing-library.com/docs/react-testing-library/intro/), [happy-dom](https://github.com/capricorn86/happy-dom) |
 | CI | GitHub Actions: lint, type check, tests and production build on every pull request and push to `main` |
 | Database | [Neon](https://neon.tech) (serverless PostgreSQL) with [Drizzle ORM](https://orm.drizzle.team) and `drizzle-kit` migrations |
-| Client-side persistence | Browser `localStorage` (AI response history) |
 
 ---
 
@@ -82,7 +83,8 @@ An interactive web app for practicing **React.js interview and exam questions by
 ```
 src/
 ├── app/
-│   ├── api/openai/route.ts   # POST endpoint: auth, validation, rate limit, OpenAI feedback
+│   ├── api/openai/route.ts   # POST endpoint: auth, validation, rate limit, OpenAI feedback, save attempt
+│   ├── api/attempts/route.ts # GET history, DELETE a question's attempts (signed-in user only)
 │   ├── sign-in/[[...sign-in]]/page.tsx  # Clerk sign-in page (catch-all route)
 │   ├── sign-up/[[...sign-up]]/page.tsx  # Clerk sign-up page (catch-all route)
 │   ├── layout.tsx            # ClerkProvider, ThemeProvider, header, background blobs
@@ -95,18 +97,19 @@ src/
 │   ├── recording-timer.tsx   # mm:ss timer
 │   ├── ai-response.tsx       # Drawer with the AI evaluation
 │   ├── evaluation-view.tsx   # Score, summary, strengths, gaps and tips
-│   ├── result-list.tsx       # Answer history cards + saved AI responses
+│   ├── result-list.tsx       # History cards (one per question) + evaluations dialog
 │   ├── mode-toggle.tsx       # Light/dark/system switch
 │   ├── theme-provider.tsx    # next-themes wrapper
 │   └── ui/                   # shadcn/ui components
 ├── data/react-questions.ts   # Question bank (text, topic, difficulty) shared by client, API and seed
 ├── db/
 │   ├── schema.ts             # Drizzle schema: users, questions, attempts, evaluations
-│   └── index.ts              # Lazily created Drizzle client (Neon HTTP driver)
+│   ├── index.ts              # Lazily created Drizzle client (Neon HTTP driver)
+│   └── attempts.ts           # Save, list and delete attempts with their evaluations
 ├── lib/
 │   ├── utils.ts              # cn() helper, formatTime()
 │   ├── evaluation.ts         # Evaluation type, JSON schema and validator
-│   ├── ai-responses-storage.ts  # Guarded localStorage for AI evaluation history
+│   ├── attempts.ts           # Attempt type shared by the API and the client
 │   └── rate-limit.ts         # In-memory per-user rate limiter
 ├── types/css.d.ts            # Type declaration for CSS imports
 └── middleware.ts             # Clerk route protection
@@ -184,8 +187,9 @@ After changing `src/db/schema.ts`, run `pnpm db:generate` and commit the new fil
 
 Tests sit next to the code they cover (`*.test.ts` / `*.test.tsx`):
 
-- `src/app/api/openai/route.test.ts`: the API route with Clerk and OpenAI mocked. It covers auth (401), validation (400), rate limiting (429), the OpenAI call options, invalid or truncated model replies (502), error handling, and that user answers are not logged.
-- `src/lib/*.test.ts`: `formatTime` and `cn`, the evaluation validator and JSON schema, the rate limiter, and the `localStorage` helpers (including corrupted and blocked storage).
+- `src/app/api/openai/route.test.ts`: the API route with Clerk and OpenAI mocked. It covers auth (401), validation (400), rate limiting (429), the OpenAI call options, invalid or truncated model replies (502), saving the attempt (and still returning the evaluation when saving fails), error handling, and that user answers are not logged.
+- `src/app/api/attempts/route.test.ts`: history and delete with the database mocked: auth (401), validation (400) and database errors (500).
+- `src/lib/*.test.ts`: `formatTime` and `cn`, the evaluation validator and JSON schema, and the rate limiter.
 - `src/data/react-questions.test.ts`: the question bank (every topic is used) and `isKnownQuestion`.
 - `src/components/question-picker.test.tsx`: the component in happy-dom, including the no-immediate-repeat rule.
 
@@ -199,12 +203,11 @@ The app is ready to deploy on [Vercel](https://vercel.com). Add the environment 
 
 ## Notes and limitations
 
-- Answer history lives in React state and resets on reload. Only AI responses are kept in `localStorage`, and only in the current browser.
+- The history shows your latest 100 answers. Older ones stay in the database for progress tracking.
 - Speech recognition is set to Polish (`pl-PL`), so answers in other languages will be transcribed poorly.
 - The rate limit is kept in memory per server instance. On serverless platforms it slows down abuse but is not a strict global limit. Use a shared store (e.g. Upstash Redis) for that.
 - The Clerk sign-in and sign-up forms are in English. Clerk's `plPL` localization can translate them.
 - The question bank lives in `src/data/react-questions.ts`. To add questions, edit that array and run `pnpm db:seed`. The API accepts only questions from this list. Questions removed from the list stay in the database, because past attempts reference them.
-- The database is set up, but the app does not read from it or write to it yet (see the roadmap).
 
 ---
 
@@ -243,7 +246,7 @@ progress_reports  id, user_id, summary, weak_topics[], recommended_questions[], 
 
 1. **Structured evaluations (done):** the OpenAI call uses [Structured Outputs](https://platform.openai.com/docs/guides/structured-outputs) (JSON schema), so each answer gets a numeric `score`, `feedback`, `strengths`, `gaps` and `tips`. The topic is not taken from the model: it will come from the `questions` table, so topic names stay consistent across attempts.
 2. **Database setup (done):** Neon project with a `dev` branch, Drizzle schema and migrations in `drizzle/`, a question seed with topics and difficulty, and a CI check that migrations match the schema. `progress_reports` will be added with step 5.
-3. **Persist attempts:** `/api/openai` saves the attempt and evaluation in the same request, keyed by the Clerk `userId`. This replaces the `localStorage` history (`ai-responses-storage.ts`). Existing local history can optionally be imported on first sign-in.
+3. **Persist attempts (done):** `/api/openai` saves the attempt and evaluation in one transaction, keyed by the Clerk `userId`, and the history is read from the database. The old `localStorage` history was dropped, not imported.
 4. **Progress in SQL:** average score per topic, trend over the last N attempts, most improved and weakest topics, and questions never answered.
 5. **Progress agent:** an endpoint that loads the user's recent attempts (with the SQL aggregates) and asks the model for a progress report: what improved, recurring gaps, and which questions to practice next. Cache the report in `progress_reports` and regenerate it only after new attempts, to control cost.
 6. **Adaptive question picking:** favor weak topics and questions not yet answered, instead of picking uniformly at random.
