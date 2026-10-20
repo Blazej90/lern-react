@@ -66,6 +66,14 @@ describe("POST /api/openai", () => {
     expect(options).toEqual({ timeout: 9000, maxRetries: 0 });
   });
 
+  it("uses the model from OPENAI_MODEL when it is set", async () => {
+    vi.stubEnv("OPENAI_MODEL", "gpt-4.1-mini");
+
+    await POST(request({ question: QUESTION, userAnswer: "Odpowiedź" }));
+
+    expect(mocks.create.mock.calls[0][0].model).toBe("gpt-4.1-mini");
+  });
+
   it("falls back to a default message when OpenAI returns no content", async () => {
     mocks.create.mockResolvedValue(aiReply(null));
 

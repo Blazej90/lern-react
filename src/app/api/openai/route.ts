@@ -9,6 +9,7 @@ const MAX_ANSWER_LENGTH = 2000;
 const RATE_LIMIT = 10;
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const OPENAI_TIMEOUT_MS = 9000;
+const DEFAULT_OPENAI_MODEL = "gpt-4o-mini";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -100,7 +101,7 @@ export async function POST(req: NextRequest) {
     // it running and billed); retries would push past the function limit.
     const response = await openai.chat.completions.create(
       {
-        model: "gpt-4o-mini",
+        model: process.env.OPENAI_MODEL || DEFAULT_OPENAI_MODEL,
         messages,
         max_tokens: 300,
         temperature: 0.7,
