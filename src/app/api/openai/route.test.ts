@@ -7,11 +7,21 @@ const mocks = vi.hoisted(() => ({
   auth: vi.fn(),
   create: vi.fn(),
   saveAttempt: vi.fn(),
+  isOwner: vi.fn(),
+  reserveDemoUse: vi.fn(),
+  releaseDemoUse: vi.fn(),
 }));
 
 vi.mock("@clerk/nextjs/server", () => ({ auth: mocks.auth }));
 
 vi.mock("@/db/attempts", () => ({ saveAttempt: mocks.saveAttempt }));
+
+vi.mock("@/db/demo", () => ({
+  reserveDemoUse: mocks.reserveDemoUse,
+  releaseDemoUse: mocks.releaseDemoUse,
+}));
+
+vi.mock("@/lib/owner", () => ({ isOwner: mocks.isOwner }));
 
 vi.mock("openai", () => ({
   default: class {
@@ -70,6 +80,8 @@ describe("POST /api/openai", () => {
     vi.stubEnv("OPENAI_API_KEY", "test-key");
     mocks.create.mockResolvedValue(aiReply(JSON.stringify(EVALUATION)));
     mocks.saveAttempt.mockImplementation(async (input) => savedAttempt(input));
+    mocks.isOwner.mockResolvedValue(true);
+    mocks.releaseDemoUse.mockResolvedValue(undefined);
     signInAsNewUser();
   });
 
@@ -82,6 +94,7 @@ describe("POST /api/openai", () => {
     expect(await res.json()).toEqual({
       evaluation: EVALUATION,
       attempt: savedAttempt({ userId, question: QUESTION, transcript: "Hook do stanu.", durationSeconds: 30 }),
+      demo: { mode: "owner" },
     });
     expect(mocks.saveAttempt).toHaveBeenCalledWith({
       userId,
@@ -102,7 +115,11 @@ describe("POST /api/openai", () => {
     );
 
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ evaluation: EVALUATION, attempt: null });
+    expect(await res.json()).toEqual({
+      evaluation: EVALUATION,
+      attempt: null,
+      demo: { mode: "owner" },
+    });
     const logged = JSON.stringify(consoleError.mock.calls);
     expect(logged).toContain("connection refused");
     expect(logged).not.toContain("sekretna odpowiedź ucznia");
@@ -245,6 +262,124 @@ describe("POST /api/openai", () => {
     signInAsNewUser();
     const otherUser = await POST(request({ question: QUESTION, userAnswer: "Odpowiedź", durationSeconds: 30 }));
     expect(otherUser.status).toBe(200);
+  });
+
+  describe("demo mode", () => {
+    const DAY = "2026-10-20";
+    const answer = () =>
+      POST(request({ question: QUESTION, userAnswer: "Odpowiedź", durationSeconds: 30 }));
+
+    beforeEach(() => {
+      mocks.isOwner.mockResolvedValue(false);
+      mocks.reserveDemoUse.mockResolvedValue({ reserved: true, day: DAY, userUsed: 1, dayUsed: 5 });
+    });
+
+    it("reserves a use before calling OpenAI and returns the remaining count", async () => {
+      const userId = signInAsNewUser();
+
+      const res = await answer();
+
+      expect(res.status).toBe(200);
+      expect((await res.json()).demo).toEqual({
+        mode: "demo",
+        limit: 3,
+        remaining: 2,
+        dailyLimitReached: false,
+      });
+      expect(mocks.reserveDemoUse).toHaveBeenCalledWith(
+        userId,
+        expect.objectContaining({ questionLimit: 3, dailyLimit: 20 }),
+      );
+      expect(mocks.reserveDemoUse.mock.invocationCallOrder[0]).toBeLessThan(
+        mocks.create.mock.invocationCallOrder[0],
+      );
+      expect(mocks.releaseDemoUse).not.toHaveBeenCalled();
+    });
+
+    it("reads the limits from the environment", async () => {
+      vi.stubEnv("DEMO_QUESTION_LIMIT", "5");
+      vi.stubEnv("DEMO_DAILY_LIMIT", "50");
+
+      await answer();
+
+      expect(mocks.reserveDemoUse).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ questionLimit: 5, dailyLimit: 50 }),
+      );
+    });
+
+    it("returns 403 without calling OpenAI when the user's limit is used up", async () => {
+      mocks.reserveDemoUse.mockResolvedValue({ reserved: false, userUsed: 3, dayUsed: 5 });
+
+      const res = await answer();
+
+      expect(res.status).toBe(403);
+      const body = await res.json();
+      expect(body.error).toMatch(/limit pytań/i);
+      expect(body.demo).toEqual({ mode: "demo", limit: 3, remaining: 0, dailyLimitReached: false });
+      expect(mocks.create).not.toHaveBeenCalled();
+    });
+
+    it("returns 403 when today's limit for all demo users is used up", async () => {
+      mocks.reserveDemoUse.mockResolvedValue({ reserved: false, userUsed: 1, dayUsed: 20 });
+
+      const res = await answer();
+
+      expect(res.status).toBe(403);
+      expect((await res.json()).error).toMatch(/dzienny limit/i);
+      expect(mocks.create).not.toHaveBeenCalled();
+    });
+
+    it("gives the use back when OpenAI fails", async () => {
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      const userId = signInAsNewUser();
+      mocks.create.mockRejectedValue(new Error("Request timed out."));
+
+      const res = await answer();
+
+      expect(res.status).toBe(500);
+      expect(mocks.releaseDemoUse).toHaveBeenCalledWith(userId, DAY);
+    });
+
+    it("gives the use back when OpenAI returns no valid evaluation", async () => {
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      mocks.create.mockResolvedValue(aiReply("{not json"));
+
+      const res = await answer();
+
+      expect(res.status).toBe(502);
+      expect(mocks.releaseDemoUse).toHaveBeenCalledTimes(1);
+    });
+
+    it("keeps the use when only saving the attempt fails", async () => {
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      mocks.saveAttempt.mockRejectedValue(new Error("connection refused"));
+
+      const res = await answer();
+
+      expect(res.status).toBe(200);
+      expect(mocks.releaseDemoUse).not.toHaveBeenCalled();
+    });
+
+    it("returns 500 without calling OpenAI when the reservation fails", async () => {
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      mocks.reserveDemoUse.mockRejectedValue(new Error("connection refused"));
+
+      const res = await answer();
+
+      expect(res.status).toBe(500);
+      expect(mocks.create).not.toHaveBeenCalled();
+      expect(mocks.releaseDemoUse).not.toHaveBeenCalled();
+    });
+
+    it("does not limit owners", async () => {
+      mocks.isOwner.mockResolvedValue(true);
+
+      const res = await answer();
+
+      expect(res.status).toBe(200);
+      expect(mocks.reserveDemoUse).not.toHaveBeenCalled();
+    });
   });
 
   it("returns 500 without logging the user's answer when OpenAI fails", async () => {

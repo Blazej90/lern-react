@@ -8,7 +8,9 @@ import axios from "axios";
 import SpeechButton from "@/components/speech-button";
 import QuestionPicker from "@/components/question-picker";
 import ResultList from "@/components/result-list";
+import DemoBanner from "@/components/demo-banner";
 import type { Attempt } from "@/lib/attempts";
+import { demoBlockReason, type DemoStatus } from "@/lib/demo";
 
 export default function Home() {
   // Access is enforced by middleware; this only avoids rendering before Clerk loads.
@@ -18,11 +20,20 @@ export default function Home() {
   // Newest first, as returned by /api/attempts.
   const [attempts, setAttempts] = useState<Attempt[]>([]);
   const [historyError, setHistoryError] = useState<string | null>(null);
+  // null until loaded; the server enforces the limit either way.
+  const [demo, setDemo] = useState<DemoStatus | null>(null);
 
   useEffect(() => {
     if (!isSignedIn) return;
 
     let cancelled = false;
+    axios
+      .get<{ demo: DemoStatus }>("/api/demo")
+      .then((res) => {
+        if (!cancelled) setDemo(res.data.demo);
+      })
+      .catch((error) => console.error("Error loading demo status:", error));
+
     axios
       .get<{ attempts: Attempt[] }>("/api/attempts")
       .then((res) => {
@@ -73,8 +84,11 @@ export default function Home() {
       </div>
 
       <div className="max-w-4xl w-full p-4 sm:p-6 md:p-8 rounded-lg">
+        {demo && <DemoBanner demo={demo} />}
+
         <QuestionPicker
           hidden={currentQuestion !== null}
+          disabled={demo !== null && demoBlockReason(demo) !== null}
           onPick={setCurrentQuestion}
         />
 
@@ -87,6 +101,7 @@ export default function Home() {
               question={currentQuestion}
               onClose={() => setCurrentQuestion(null)}
               onSaved={addAttempt}
+              onDemoChange={setDemo}
             />
           </div>
         )}

@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   check,
+  date,
   index,
   integer,
   pgEnum,
@@ -21,10 +22,26 @@ export const questionDifficulty = pgEnum(
 );
 
 // Keyed by the Clerk user id; Clerk stays the source of truth for profiles.
-export const users = pgTable("users", {
-  id: text("id").primaryKey(),
-  createdAt: createdAt(),
-});
+export const users = pgTable(
+  "users",
+  {
+    id: text("id").primaryKey(),
+    // Evaluations used in demo mode; deleting attempts does not lower it.
+    demoUsed: integer("demo_used").notNull().default(0),
+    createdAt: createdAt(),
+  },
+  (t) => [check("users_demo_used_non_negative", sql`${t.demoUsed} >= 0`)],
+);
+
+// Demo evaluations used per day (UTC) by all demo users together.
+export const demoUsage = pgTable(
+  "demo_usage",
+  {
+    day: date("day").primaryKey(),
+    used: integer("used").notNull().default(0),
+  },
+  (t) => [check("demo_usage_used_non_negative", sql`${t.used} >= 0`)],
+);
 
 export const questions = pgTable("questions", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
