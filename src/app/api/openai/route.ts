@@ -9,10 +9,16 @@ const MAX_ANSWER_LENGTH = 2000;
 const RATE_LIMIT = 10;
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const OPENAI_TIMEOUT_MS = 9000;
+const DEFAULT_OPENAI_MODEL = "gpt-4o-mini";
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Created on first use: the constructor throws without an API key, and
+// `next build` imports this module to collect page data.
+let openai: OpenAI | null = null;
+
+function getOpenAI() {
+  openai ??= new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  return openai;
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -98,9 +104,9 @@ export async function POST(req: NextRequest) {
 
     // SDK-level timeout aborts the HTTP request (a Promise.race would leave
     // it running and billed); retries would push past the function limit.
-    const response = await openai.chat.completions.create(
+    const response = await getOpenAI().chat.completions.create(
       {
-        model: "gpt-4o-mini",
+        model: process.env.OPENAI_MODEL || DEFAULT_OPENAI_MODEL,
         messages,
         max_tokens: 300,
         temperature: 0.7,

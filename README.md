@@ -14,7 +14,7 @@ An interactive web app for practicing **React.js interview and exam questions by
 - **Random question picker**: draws a question from a built-in bank of 28 React topics (hooks, Virtual DOM, props, keys, Context, Redux, React Router, `React.memo`, Suspense, lazy loading, HOCs, controlled and uncontrolled components, TypeScript with React, and more). The same question never comes up twice in a row.
 - **Voice answers (speech-to-text)**: records your answer in Polish (`pl-PL`) with the browser's Web Speech API through `react-speech-recognition` in continuous mode. The transcript appears live in an auto-resizing textarea.
 - **Recording timer**: shows how long you have been answering (`mm:ss`). It resets on each new recording, and the time is saved with each answer.
-- **AI feedback**: when recording stops, the transcript and question are sent to `/api/openai`. The endpoint asks `gpt-4o-mini` to review the answer as a friendly React teacher. The feedback opens in a bottom drawer (Vaul).
+- **AI feedback**: when recording stops, the transcript and question are sent to `/api/openai`. The endpoint asks `gpt-4o-mini` (configurable with `OPENAI_MODEL`) to review the answer as a friendly React teacher. The feedback opens in a bottom drawer (Vaul).
 - **Answer history**: each answered question appears as a card with your transcript and response time. Answering the same question again replaces the earlier card, and you can delete cards.
 - **Saved AI responses**: AI responses are stored in `localStorage` under their question (the latest 5 per question), so you can open earlier versions ("Wersja 1, Wersja 2, …") in a dialog. Deleting a card also deletes its saved responses.
 - **Light, dark and system themes**: a theme switcher built with `next-themes`.
@@ -59,7 +59,7 @@ An interactive web app for practicing **React.js interview and exam questions by
 | UI library | [React 18](https://react.dev) |
 | Language | [TypeScript 5](https://www.typescriptlang.org) |
 | Authentication | [Clerk](https://clerk.com) (`@clerk/nextjs`): `ClerkProvider`, `clerkMiddleware`, `<SignIn />`, `<SignUp />`, `UserButton` |
-| AI | [OpenAI Node SDK](https://github.com/openai/openai-node) (`openai` v4), model **`gpt-4o-mini`** |
+| AI | [OpenAI Node SDK](https://github.com/openai/openai-node) (`openai` v4), model **`gpt-4o-mini`** by default (`OPENAI_MODEL`) |
 | Speech recognition | [`react-speech-recognition`](https://github.com/JamesBrill/react-speech-recognition) (Web Speech API) + `regenerator-runtime` polyfill |
 | HTTP client | [Axios](https://axios-http.com) |
 | Styling | [Tailwind CSS 3](https://tailwindcss.com), `tailwindcss-animate`, PostCSS, Autoprefixer |
@@ -68,9 +68,9 @@ An interactive web app for practicing **React.js interview and exam questions by
 | Icons | [Lucide React](https://lucide.dev) |
 | Theming | [next-themes](https://github.com/pacocoursey/next-themes) |
 | Utilities | `clsx`, `tailwind-merge`, `class-variance-authority` |
-| Linting | ESLint 9 + `eslint-config-next` |
+| Linting | ESLint 9 (flat config, `eslint.config.mjs`) + `eslint-config-next` |
 | Testing | [Vitest](https://vitest.dev), [Testing Library](https://testing-library.com/docs/react-testing-library/intro/), [happy-dom](https://github.com/capricorn86/happy-dom) |
-| CI | GitHub Actions: lint, type check and tests on every pull request and push to `main` |
+| CI | GitHub Actions: lint, type check, tests and production build on every pull request and push to `main` |
 | Client-side persistence | Browser `localStorage` (AI response history) |
 
 ---
@@ -132,6 +132,8 @@ Create a `.env.local` file in the project root:
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
 CLERK_SECRET_KEY=sk_test_...
 OPENAI_API_KEY=sk-...
+# Optional: the model used for feedback (default: gpt-4o-mini)
+OPENAI_MODEL=gpt-4o-mini
 ```
 
 ### Scripts
@@ -159,7 +161,7 @@ Tests sit next to the code they cover (`*.test.ts` / `*.test.tsx`):
 
 ## Deployment
 
-The app is ready to deploy on [Vercel](https://vercel.com). Add the three environment variables above in the project settings. The OpenAI request is capped at 300 output tokens and a 9-second timeout so it fits within the serverless function time limits of the default plan.
+The app is ready to deploy on [Vercel](https://vercel.com). Add the environment variables above in the project settings. The OpenAI request is capped at 300 output tokens and a 9-second timeout so it fits within the serverless function time limits of the default plan.
 
 ---
 
@@ -221,7 +223,6 @@ progress_reports  id, user_id, summary, weak_topics[], recommended_questions[], 
 - **Error monitoring:** [Sentry](https://sentry.io) for server and client errors, plus Vercel Analytics or Speed Insights.
 - **Spending guardrails:** a per-user daily cap on AI requests stored in the database, plus usage alerts in the OpenAI dashboard.
 - **End-to-end tests:** [Playwright](https://playwright.dev) for the main flow: sign-in → draw a question → answer → feedback, with Clerk testing tokens and a mocked AI endpoint.
-- **Production build in CI:** add `next build` to GitHub Actions using Clerk test keys stored as repository secrets.
 - **Automated dependency updates:** Dependabot or Renovate, grouped and merged only when CI passes.
 
 ### Stage 3: Learning experience
@@ -235,7 +236,6 @@ progress_reports  id, user_id, summary, weak_topics[], recommended_questions[], 
 ### Stage 4: Maintenance and upgrades
 
 - **Framework upgrades:** move to React 19 and Next.js 16 once the dependencies (`react-speech-recognition`, Clerk) support them.
-- **Linting:** migrate from the deprecated `next lint` to the ESLint CLI (`npx @next/codemod@canary next-lint-to-eslint-cli .`).
 - **Browser data:** refresh it with `npx update-browserslist-db@latest`, and keep it fresh through the dependency bot.
-- **AI model:** make the model configurable through an environment variable and periodically compare newer or cheaper models against a small set of reference answers before switching.
+- **AI model:** periodically compare newer or cheaper models against a small set of reference answers before switching `OPENAI_MODEL`.
 - **Package manager:** optionally migrate to pnpm for faster installs and stricter dependency resolution.
