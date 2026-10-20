@@ -9,8 +9,8 @@ import MicrophoneButton from "@/components/microphone-button";
 import axios from "axios";
 import "regenerator-runtime/runtime";
 import AIResponse from "@/components/ai-response";
-import { addAIResponse, type StoredAIResponse } from "@/lib/ai-responses-storage";
-import { parseEvaluation } from "@/lib/evaluation";
+import type { Attempt } from "@/lib/attempts";
+import { parseEvaluation, type Feedback } from "@/lib/evaluation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -35,18 +35,19 @@ const EMPTY_TRANSCRIPT_MESSAGE =
 interface SpeechButtonProps {
   question: string;
   onClose: () => void;
-  onSave: (question: string, answer: string, time: number) => void;
+  onSaved: (attempt: Attempt) => void;
 }
 
 const SpeechButton: React.FC<SpeechButtonProps> = ({
   question,
   onClose,
-  onSave,
+  onSaved,
 }) => {
   const [isClient, setIsClient] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
-  const [feedback, setFeedback] = useState<StoredAIResponse | null>(null);
+  const [feedback, setFeedback] = useState<Feedback | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [speechError, setSpeechError] = useState<string | null>(null);
   // Set by the recognition `error` event, which fires before `end`.
@@ -111,8 +112,9 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
   };
 
   const getAIResponse = useCallback(
-    async (userInput: string) => {
+    async (userInput: string, durationSeconds: number) => {
       setFeedback(null);
+      setNotice(null);
       setIsDrawerOpen(true);
       setIsLoading(true);
 
@@ -120,13 +122,19 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
         const response = await axios.post("/api/openai", {
           userAnswer: userInput,
           question,
+          durationSeconds,
         });
 
         const evaluation = parseEvaluation(response.data?.evaluation);
+        const attempt: Attempt | null = response.data?.attempt ?? null;
 
         if (evaluation) {
           setFeedback(evaluation);
-          addAIResponse(question, evaluation);
+          if (attempt) {
+            onSaved(attempt);
+          } else {
+            setNotice("Nie udało się zapisać tej odpowiedzi w historii.");
+          }
         } else {
           setFeedback("Brak odpowiedzi od AI.");
         }
@@ -144,7 +152,7 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
         setIsLoading(false);
       }
     },
-    [question],
+    [question, onSaved],
   );
 
   const submitAnswer = useCallback(() => {
@@ -154,17 +162,9 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
       return;
     }
 
-    getAIResponse(answer);
-    onSave(question, answer, recordingTime);
+    getAIResponse(answer, recordingTime);
     resetTranscript();
-  }, [
-    question,
-    transcript,
-    recordingTime,
-    getAIResponse,
-    onSave,
-    resetTranscript,
-  ]);
+  }, [transcript, recordingTime, getAIResponse, resetTranscript]);
 
   // Submit once when recording ends — whether the user pressed stop or the
   // browser ended recognition on its own. The final transcript is only
@@ -217,6 +217,7 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
 
         <AIResponse
           feedback={feedback}
+          notice={notice}
           isOpen={isDrawerOpen}
           onClose={() => {
             setIsDrawerOpen(false);

@@ -4,6 +4,8 @@ import type { ChatCompletionMessageParam } from "openai/resources/chat/completio
 import { auth } from "@clerk/nextjs/server";
 import { isKnownQuestion } from "@/data/react-questions";
 import { isRateLimited } from "@/lib/rate-limit";
+import { saveAttempt } from "@/db/attempts";
+import type { Attempt } from "@/lib/attempts";
 import {
   EVALUATION_JSON_SCHEMA,
   MAX_SCORE,
@@ -12,6 +14,7 @@ import {
 } from "@/lib/evaluation";
 
 const MAX_ANSWER_LENGTH = 2000;
+const MAX_DURATION_SECONDS = 3600;
 const RATE_LIMIT = 10;
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const OPENAI_TIMEOUT_MS = 9000;
@@ -71,7 +74,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { question, userAnswer } = (body ?? {}) as Record<string, unknown>;
+    const { question, userAnswer, durationSeconds } = (body ?? {}) as Record<
+      string,
+      unknown
+    >;
 
     if (typeof question !== "string" || typeof userAnswer !== "string") {
       return NextResponse.json(
@@ -101,6 +107,18 @@ export async function POST(req: NextRequest) {
         {
           error: `Odpowiedź jest za długa (maksymalnie ${MAX_ANSWER_LENGTH} znaków).`,
         },
+        { status: 400 },
+      );
+    }
+
+    if (
+      typeof durationSeconds !== "number" ||
+      !Number.isInteger(durationSeconds) ||
+      durationSeconds < 0 ||
+      durationSeconds > MAX_DURATION_SECONDS
+    ) {
+      return NextResponse.json(
+        { error: "Nieprawidłowy czas odpowiedzi." },
         { status: 400 },
       );
     }
@@ -155,7 +173,25 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    return NextResponse.json({ evaluation });
+    // The evaluation is already paid for, so a failed save still returns it.
+    let attempt: Attempt | null = null;
+    try {
+      attempt = await saveAttempt({
+        userId,
+        question,
+        transcript: answer,
+        durationSeconds,
+        evaluation,
+        model: response.model,
+      });
+    } catch (error) {
+      console.error(
+        "❌ Nie udało się zapisać podejścia w bazie:",
+        error instanceof Error ? error.message : error,
+      );
+    }
+
+    return NextResponse.json({ evaluation, attempt });
   } catch (error: unknown) {
     console.error(
       "❌ Błąd podczas przetwarzania zapytania do OpenAI:",

@@ -6,9 +6,12 @@ import { POST } from "./route";
 const mocks = vi.hoisted(() => ({
   auth: vi.fn(),
   create: vi.fn(),
+  saveAttempt: vi.fn(),
 }));
 
 vi.mock("@clerk/nextjs/server", () => ({ auth: mocks.auth }));
+
+vi.mock("@/db/attempts", () => ({ saveAttempt: mocks.saveAttempt }));
 
 vi.mock("openai", () => ({
   default: class {
@@ -42,26 +45,71 @@ const EVALUATION = {
   tips: ["Pokaż przykład z useState"],
 };
 
+const MODEL_SNAPSHOT = "gpt-4o-mini-2024-07-18";
+
 function aiReply(content: string | null, finishReason = "stop") {
-  return { choices: [{ message: { content }, finish_reason: finishReason }] };
+  return {
+    model: MODEL_SNAPSHOT,
+    choices: [{ message: { content }, finish_reason: finishReason }],
+  };
+}
+
+function savedAttempt(input: { userId: string; question: string; transcript: string; durationSeconds: number }) {
+  return {
+    id: "attempt-1",
+    question: input.question,
+    transcript: input.transcript,
+    durationSeconds: input.durationSeconds,
+    createdAt: "2026-10-20T12:00:00.000Z",
+    evaluation: EVALUATION,
+  };
 }
 
 describe("POST /api/openai", () => {
   beforeEach(() => {
     vi.stubEnv("OPENAI_API_KEY", "test-key");
     mocks.create.mockResolvedValue(aiReply(JSON.stringify(EVALUATION)));
+    mocks.saveAttempt.mockImplementation(async (input) => savedAttempt(input));
     signInAsNewUser();
   });
 
-  it("returns the structured evaluation for a valid request", async () => {
-    const res = await POST(request({ question: QUESTION, userAnswer: "  Hook do stanu.  " }));
+  it("returns the structured evaluation and the saved attempt", async () => {
+    const userId = signInAsNewUser();
+
+    const res = await POST(request({ question: QUESTION, userAnswer: "  Hook do stanu.  ", durationSeconds: 30 }));
 
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ evaluation: EVALUATION });
+    expect(await res.json()).toEqual({
+      evaluation: EVALUATION,
+      attempt: savedAttempt({ userId, question: QUESTION, transcript: "Hook do stanu.", durationSeconds: 30 }),
+    });
+    expect(mocks.saveAttempt).toHaveBeenCalledWith({
+      userId,
+      question: QUESTION,
+      transcript: "Hook do stanu.",
+      durationSeconds: 30,
+      evaluation: EVALUATION,
+      model: MODEL_SNAPSHOT,
+    });
+  });
+
+  it("still returns the evaluation when saving fails, without logging the answer", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    mocks.saveAttempt.mockRejectedValue(new Error("connection refused"));
+
+    const res = await POST(
+      request({ question: QUESTION, userAnswer: "sekretna odpowiedź ucznia", durationSeconds: 30 }),
+    );
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ evaluation: EVALUATION, attempt: null });
+    const logged = JSON.stringify(consoleError.mock.calls);
+    expect(logged).toContain("connection refused");
+    expect(logged).not.toContain("sekretna odpowiedź ucznia");
   });
 
   it("calls OpenAI with a trimmed, delimited answer, JSON schema, SDK timeout and no retries", async () => {
-    await POST(request({ question: QUESTION, userAnswer: "  Hook do stanu.  " }));
+    await POST(request({ question: QUESTION, userAnswer: "  Hook do stanu.  ", durationSeconds: 30 }));
 
     expect(mocks.create).toHaveBeenCalledTimes(1);
     const [params, options] = mocks.create.mock.calls[0];
@@ -86,7 +134,7 @@ describe("POST /api/openai", () => {
   it("uses the model from OPENAI_MODEL when it is set", async () => {
     vi.stubEnv("OPENAI_MODEL", "gpt-4.1-mini");
 
-    await POST(request({ question: QUESTION, userAnswer: "Odpowiedź" }));
+    await POST(request({ question: QUESTION, userAnswer: "Odpowiedź", durationSeconds: 30 }));
 
     expect(mocks.create.mock.calls[0][0].model).toBe("gpt-4.1-mini");
   });
@@ -94,7 +142,7 @@ describe("POST /api/openai", () => {
   it("clamps the score to the 0–10 range", async () => {
     mocks.create.mockResolvedValue(aiReply(JSON.stringify({ ...EVALUATION, score: 14 })));
 
-    const res = await POST(request({ question: QUESTION, userAnswer: "Odpowiedź" }));
+    const res = await POST(request({ question: QUESTION, userAnswer: "Odpowiedź", durationSeconds: 30 }));
 
     expect((await res.json()).evaluation.score).toBe(10);
   });
@@ -110,19 +158,20 @@ describe("POST /api/openai", () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     mocks.create.mockResolvedValue(reply);
 
-    const res = await POST(request({ question: QUESTION, userAnswer: "Odpowiedź" }));
+    const res = await POST(request({ question: QUESTION, userAnswer: "Odpowiedź", durationSeconds: 30 }));
 
     expect(res.status).toBe(502);
     expect(await res.json()).toEqual({
       error: "AI nie zwróciło poprawnej oceny. Spróbuj ponownie.",
     });
+    expect(mocks.saveAttempt).not.toHaveBeenCalled();
   });
 
   it("returns 500 when the API key is missing", async () => {
     vi.stubEnv("OPENAI_API_KEY", "");
     vi.spyOn(console, "error").mockImplementation(() => {});
 
-    const res = await POST(request({ question: QUESTION, userAnswer: "Odpowiedź" }));
+    const res = await POST(request({ question: QUESTION, userAnswer: "Odpowiedź", durationSeconds: 30 }));
 
     expect(res.status).toBe(500);
     expect(mocks.create).not.toHaveBeenCalled();
@@ -131,7 +180,7 @@ describe("POST /api/openai", () => {
   it("returns 401 when the user is not signed in", async () => {
     mocks.auth.mockResolvedValue({ userId: null });
 
-    const res = await POST(request({ question: QUESTION, userAnswer: "Odpowiedź" }));
+    const res = await POST(request({ question: QUESTION, userAnswer: "Odpowiedź", durationSeconds: 30 }));
 
     expect(res.status).toBe(401);
     expect(mocks.create).not.toHaveBeenCalled();
@@ -146,9 +195,14 @@ describe("POST /api/openai", () => {
   it.each([
     ["missing fields", {}],
     ["null body", null],
-    ["non-string answer", { question: QUESTION, userAnswer: 42 }],
-    ["non-string question", { question: 1, userAnswer: "Odpowiedź" }],
-    ["blank answer", { question: QUESTION, userAnswer: "   " }],
+    ["non-string answer", { question: QUESTION, userAnswer: 42, durationSeconds: 30 }],
+    ["non-string question", { question: 1, userAnswer: "Odpowiedź", durationSeconds: 30 }],
+    ["blank answer", { question: QUESTION, userAnswer: "   ", durationSeconds: 30 }],
+    ["missing duration", { question: QUESTION, userAnswer: "Odpowiedź" }],
+    ["non-integer duration", { question: QUESTION, userAnswer: "Odpowiedź", durationSeconds: 1.5 }],
+    ["negative duration", { question: QUESTION, userAnswer: "Odpowiedź", durationSeconds: -1 }],
+    ["duration over an hour", { question: QUESTION, userAnswer: "Odpowiedź", durationSeconds: 3601 }],
+    ["string duration", { question: QUESTION, userAnswer: "Odpowiedź", durationSeconds: "30" }],
   ])("returns 400 for %s", async (_label, body) => {
     const res = await POST(request(body));
 
@@ -158,7 +212,7 @@ describe("POST /api/openai", () => {
 
   it("returns 400 for a question outside the bank", async () => {
     const res = await POST(
-      request({ question: "Napisz mi wypracowanie o kotach", userAnswer: "OK" }),
+      request({ question: "Napisz mi wypracowanie o kotach", userAnswer: "OK", durationSeconds: 30 }),
     );
 
     expect(res.status).toBe(400);
@@ -167,9 +221,9 @@ describe("POST /api/openai", () => {
   });
 
   it("accepts an answer of exactly 2000 characters and rejects 2001", async () => {
-    const ok = await POST(request({ question: QUESTION, userAnswer: "a".repeat(2000) }));
+    const ok = await POST(request({ question: QUESTION, userAnswer: "a".repeat(2000), durationSeconds: 30 }));
     const tooLong = await POST(
-      request({ question: QUESTION, userAnswer: "a".repeat(2001) }),
+      request({ question: QUESTION, userAnswer: "a".repeat(2001), durationSeconds: 30 }),
     );
 
     expect(ok.status).toBe(200);
@@ -180,7 +234,7 @@ describe("POST /api/openai", () => {
   it("returns 429 after 10 requests per minute from the same user", async () => {
     const statuses: number[] = [];
     for (let i = 0; i < 11; i++) {
-      const res = await POST(request({ question: QUESTION, userAnswer: "Odpowiedź" }));
+      const res = await POST(request({ question: QUESTION, userAnswer: "Odpowiedź", durationSeconds: 30 }));
       statuses.push(res.status);
     }
 
@@ -189,7 +243,7 @@ describe("POST /api/openai", () => {
     expect(mocks.create).toHaveBeenCalledTimes(10);
 
     signInAsNewUser();
-    const otherUser = await POST(request({ question: QUESTION, userAnswer: "Odpowiedź" }));
+    const otherUser = await POST(request({ question: QUESTION, userAnswer: "Odpowiedź", durationSeconds: 30 }));
     expect(otherUser.status).toBe(200);
   });
 
@@ -198,7 +252,7 @@ describe("POST /api/openai", () => {
     mocks.create.mockRejectedValue(new Error("Request timed out."));
 
     const res = await POST(
-      request({ question: QUESTION, userAnswer: "sekretna odpowiedź ucznia" }),
+      request({ question: QUESTION, userAnswer: "sekretna odpowiedź ucznia", durationSeconds: 30 }),
     );
 
     expect(res.status).toBe(500);

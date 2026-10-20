@@ -72,3 +72,6 @@ export function parseEvaluation(value: unknown): Evaluation | null {
     tips,
   };
 }
+
+// What the feedback views show: an evaluation, or a message when there is none.
+export type Feedback = Evaluation | string;
