@@ -10,6 +10,7 @@ import axios from "axios";
 import "regenerator-runtime/runtime";
 import AIResponse from "@/components/ai-response";
 import type { Attempt } from "@/lib/attempts";
+import type { DemoStatus } from "@/lib/demo";
 import { parseEvaluation, type Feedback } from "@/lib/evaluation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -36,12 +37,14 @@ interface SpeechButtonProps {
   question: string;
   onClose: () => void;
   onSaved: (attempt: Attempt) => void;
+  onDemoChange: (demo: DemoStatus) => void;
 }
 
 const SpeechButton: React.FC<SpeechButtonProps> = ({
   question,
   onClose,
   onSaved,
+  onDemoChange,
 }) => {
   const [isClient, setIsClient] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
@@ -127,6 +130,7 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
 
         const evaluation = parseEvaluation(response.data?.evaluation);
         const attempt: Attempt | null = response.data?.attempt ?? null;
+        if (response.data?.demo) onDemoChange(response.data.demo);
 
         if (evaluation) {
           setFeedback(evaluation);
@@ -140,9 +144,9 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
         }
       } catch (error) {
         console.error("Error getting response from OpenAI:", error);
-        const serverError = axios.isAxiosError(error)
-          ? error.response?.data?.error
-          : null;
+        const data = axios.isAxiosError(error) ? error.response?.data : null;
+        const serverError = data?.error;
+        if (data?.demo) onDemoChange(data.demo);
         setFeedback(
           typeof serverError === "string"
             ? serverError
@@ -152,7 +156,7 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
         setIsLoading(false);
       }
     },
-    [question, onSaved],
+    [question, onSaved, onDemoChange],
   );
 
   const submitAnswer = useCallback(() => {

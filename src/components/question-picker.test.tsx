@@ -50,6 +50,16 @@ describe("QuestionPicker", () => {
     ]);
   });
 
+  it("does not pick when disabled", () => {
+    const onPick = vi.fn();
+    render(<QuestionPicker hidden={false} disabled onPick={onPick} />);
+
+    fireEvent.click(button());
+
+    expect(button()).toHaveProperty("disabled", true);
+    expect(onPick).not.toHaveBeenCalled();
+  });
+
   it("renders nothing when hidden", () => {
     render(<QuestionPicker hidden onPick={vi.fn()} />);
 

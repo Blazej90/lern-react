@@ -5,7 +5,15 @@ import { auth } from "@clerk/nextjs/server";
 import { isKnownQuestion } from "@/data/react-questions";
 import { isRateLimited } from "@/lib/rate-limit";
 import { saveAttempt } from "@/db/attempts";
+import { releaseDemoUse, reserveDemoUse } from "@/db/demo";
 import type { Attempt } from "@/lib/attempts";
+import {
+  demoBlockReason,
+  demoStatus,
+  readDemoConfig,
+  type DemoStatus,
+} from "@/lib/demo";
+import { isOwner } from "@/lib/owner";
 import {
   EVALUATION_JSON_SCHEMA,
   MAX_SCORE,
@@ -39,6 +47,21 @@ function parseEvaluationJson(content: string | null | undefined) {
 }
 
 export async function POST(req: NextRequest) {
+  // Set once a demo use is reserved, so it can be given back on failure.
+  let demoReservation: { userId: string; day: string } | null = null;
+
+  const releaseDemo = async () => {
+    if (!demoReservation) return;
+    try {
+      await releaseDemoUse(demoReservation.userId, demoReservation.day);
+    } catch (error) {
+      console.error(
+        "❌ Nie udało się zwrócić użycia wersji demo:",
+        error instanceof Error ? error.message : error,
+      );
+    }
+  };
+
   try {
     if (!process.env.OPENAI_API_KEY) {
       console.error("Brakuje OPENAI_API_KEY w środowisku.");
@@ -123,6 +146,27 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Reserved before calling OpenAI, so demo users cannot exceed the limit
+    // with parallel requests.
+    const demoConfig = readDemoConfig();
+    let demo: DemoStatus = { mode: "owner" };
+    if (!(await isOwner(demoConfig))) {
+      const reservation = await reserveDemoUse(userId, demoConfig);
+      demo = demoStatus(demoConfig, reservation.userUsed, reservation.dayUsed);
+      if (!reservation.reserved) {
+        return NextResponse.json(
+          {
+            error:
+              demoBlockReason(demo) ??
+              "Limit wersji demonstracyjnej został wyczerpany.",
+            demo,
+          },
+          { status: 403 },
+        );
+      }
+      demoReservation = { userId, day: reservation.day };
+    }
+
     const messages: ChatCompletionMessageParam[] = [
       {
         role: "system",
@@ -167,6 +211,7 @@ export async function POST(req: NextRequest) {
         "❌ OpenAI nie zwróciło poprawnej oceny:",
         choice?.finish_reason ?? "brak odpowiedzi",
       );
+      await releaseDemo();
       return NextResponse.json(
         { error: "AI nie zwróciło poprawnej oceny. Spróbuj ponownie." },
         { status: 502 },
@@ -191,12 +236,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    return NextResponse.json({ evaluation, attempt });
+    return NextResponse.json({ evaluation, attempt, demo });
   } catch (error: unknown) {
     console.error(
       "❌ Błąd podczas przetwarzania zapytania do OpenAI:",
       error instanceof Error ? error.message : error,
     );
+    await releaseDemo();
 
     return NextResponse.json(
       { error: "Błąd podczas uzyskiwania odpowiedzi AI." },

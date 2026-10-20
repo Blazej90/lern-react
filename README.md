@@ -16,6 +16,7 @@ An interactive web app for practicing **React.js interview and exam questions by
 - **Recording timer**: shows how long you have been answering (`mm:ss`). It resets on each new recording, and the time is saved with each answer.
 - **AI evaluation**: when recording stops, the transcript and question are sent to `/api/openai`. The endpoint asks `gpt-4o-mini` (configurable with `OPENAI_MODEL`) to grade the answer as a friendly React teacher. It uses Structured Outputs, so every evaluation has the same shape: a score from 0 to 10, a short summary, what was right, what was missing, and tips. The evaluation opens in a bottom drawer (Vaul).
 - **Answer history in the database**: every answer and its evaluation are saved in PostgreSQL (Neon) under your Clerk account, so the history survives reloads and is available on any device. Each question has one card with your latest transcript, score, response time and date. "Odpowiedź AI" opens every evaluation of that question ("Wersja 1, Wersja 2, …"), and "Usuń" deletes all your answers to it.
+- **Demo mode**: the app runs on the owner's OpenAI key, so anyone whose verified email is not in `OWNER_EMAILS` gets a limited demo: 3 evaluations per account (`DEMO_QUESTION_LIMIT`) and 20 per day for all demo users together (`DEMO_DAILY_LIMIT`). A banner shows how many questions are left, and the picker is disabled when none are.
 - **Light, dark and system themes**: a theme switcher built with `next-themes`.
 - **Responsive, animated UI**: a mobile-first layout with blurred gradient "blob" backgrounds, built with Tailwind CSS and shadcn/ui components.
 
@@ -36,6 +37,7 @@ An interactive web app for practicing **React.js interview and exam questions by
        │                                     │  • rate limit (429)          │
        └──────────────────────────────────── │  • known question, answer    │
                                              │    ≤ 2000 chars (400)        │
+                                             │  • demo limit (403)          │
                                              │  4. OpenAI Chat Completions  │
                                              │     gpt-4o-mini, JSON schema │
                                              │     600 tokens, 9 s timeout  │
@@ -47,9 +49,9 @@ An interactive web app for practicing **React.js interview and exam questions by
 1. `middleware.ts` (Clerk middleware) protects every route except `/sign-in` and `/sign-up`. Signed-out users are redirected to the app's own sign-in page.
 2. On the home page, the user draws a question (`question-picker.tsx`).
 3. `speech-button.tsx` starts and stops speech recognition, runs the timer, and sends the transcript and the recording time to the API once recording stops.
-4. The API route checks that `OPENAI_API_KEY` is set and that a Clerk session exists. It applies a per-user rate limit (10 requests per minute) and accepts only questions from the shared bank (`src/data/react-questions.ts`) with answers up to 2000 characters. This prevents the endpoint from being used as a general-purpose GPT proxy. It then calls OpenAI with a system prompt ("You are a React teacher who evaluates students' answers…"). The reply must match a JSON schema (Structured Outputs, `src/lib/evaluation.ts`); a truncated or invalid reply returns 502. The call uses the SDK's 9-second timeout with retries disabled, so it fits within serverless function limits and aborts the request when it runs too long.
+4. The API route checks that `OPENAI_API_KEY` is set and that a Clerk session exists. It applies a per-user rate limit (10 requests per minute) and accepts only questions from the shared bank (`src/data/react-questions.ts`) with answers up to 2000 characters. This prevents the endpoint from being used as a general-purpose GPT proxy. Users who are not owners (`src/lib/owner.ts` checks verified Clerk emails against `OWNER_EMAILS`) must reserve a demo use first (`src/db/demo.ts`): a conditional `UPDATE` on their counter and on today's counter, so parallel requests cannot go over either limit; otherwise the route returns 403. A reserved use is given back when OpenAI fails. It then calls OpenAI with a system prompt ("You are a React teacher who evaluates students' answers…"). The reply must match a JSON schema (Structured Outputs, `src/lib/evaluation.ts`); a truncated or invalid reply returns 502. The call uses the SDK's 9-second timeout with retries disabled, so it fits within serverless function limits and aborts the request when it runs too long.
 5. The route saves the user, the attempt and the evaluation in one transaction (`src/db/attempts.ts`). If saving fails, the evaluation is still returned and the drawer says it was not saved.
-6. The evaluation is shown in `ai-response.tsx`, and the attempt is added to `result-list.tsx`. On page load, the history comes from `GET /api/attempts`, and "Usuń" calls `DELETE /api/attempts`.
+6. The evaluation is shown in `ai-response.tsx`, and the attempt is added to `result-list.tsx`. On page load, the history comes from `GET /api/attempts`, the demo status from `GET /api/demo` (shown in `demo-banner.tsx`), and "Usuń" calls `DELETE /api/attempts`. Deleting answers does not give demo uses back.
 
 ---
 
@@ -85,6 +87,7 @@ src/
 ├── app/
 │   ├── api/openai/route.ts   # POST endpoint: auth, validation, rate limit, OpenAI feedback, save attempt
 │   ├── api/attempts/route.ts # GET history, DELETE a question's attempts (signed-in user only)
+│   ├── api/demo/route.ts     # GET the signed-in user's demo status
 │   ├── sign-in/[[...sign-in]]/page.tsx  # Clerk sign-in page (catch-all route)
 │   ├── sign-up/[[...sign-up]]/page.tsx  # Clerk sign-up page (catch-all route)
 │   ├── layout.tsx            # ClerkProvider, ThemeProvider, header, background blobs
@@ -98,18 +101,22 @@ src/
 │   ├── ai-response.tsx       # Drawer with the AI evaluation
 │   ├── evaluation-view.tsx   # Score, summary, strengths, gaps and tips
 │   ├── result-list.tsx       # History cards (one per question) + evaluations dialog
+│   ├── demo-banner.tsx       # Demo mode banner with the remaining questions
 │   ├── mode-toggle.tsx       # Light/dark/system switch
 │   ├── theme-provider.tsx    # next-themes wrapper
 │   └── ui/                   # shadcn/ui components
 ├── data/react-questions.ts   # Question bank (text, topic, difficulty) shared by client, API and seed
 ├── db/
-│   ├── schema.ts             # Drizzle schema: users, questions, attempts, evaluations
+│   ├── schema.ts             # Drizzle schema: users, questions, attempts, evaluations, demo_usage
 │   ├── index.ts              # Lazily created Drizzle client (Neon HTTP driver)
-│   └── attempts.ts           # Save, list and delete attempts with their evaluations
+│   ├── attempts.ts           # Save, list and delete attempts with their evaluations
+│   └── demo.ts               # Reserve, give back and read demo uses
 ├── lib/
 │   ├── utils.ts              # cn() helper, formatTime()
 │   ├── evaluation.ts         # Evaluation type, JSON schema and validator
 │   ├── attempts.ts           # Attempt type shared by the API and the client
+│   ├── demo.ts               # Demo config (env), status and messages
+│   ├── owner.ts              # Owner check by verified Clerk email
 │   └── rate-limit.ts         # In-memory per-user rate limiter
 ├── types/css.d.ts            # Type declaration for CSS imports
 └── middleware.ts             # Clerk route protection
@@ -152,7 +159,15 @@ OPENAI_MODEL=gpt-4o-mini
 # Neon: pooled connection for the app, direct connection for migrations
 DATABASE_URL=postgresql://...@ep-...-pooler.<region>.aws.neon.tech/neondb?sslmode=require
 DATABASE_URL_UNPOOLED=postgresql://...@ep-....<region>.aws.neon.tech/neondb?sslmode=require
+# Demo mode: comma-separated owner emails with no limit; everyone else gets the demo
+OWNER_EMAILS=you@example.com
+# Optional: evaluations per demo account (default 3, 0 turns the demo off)
+DEMO_QUESTION_LIMIT=3
+# Optional: evaluations per day for all demo users together, UTC (default 20)
+DEMO_DAILY_LIMIT=20
 ```
+
+Without `OWNER_EMAILS`, every user, including you, is in demo mode.
 
 ### Database
 
@@ -187,9 +202,10 @@ After changing `src/db/schema.ts`, run `pnpm db:generate` and commit the new fil
 
 Tests sit next to the code they cover (`*.test.ts` / `*.test.tsx`):
 
-- `src/app/api/openai/route.test.ts`: the API route with Clerk and OpenAI mocked. It covers auth (401), validation (400), rate limiting (429), the OpenAI call options, invalid or truncated model replies (502), saving the attempt (and still returning the evaluation when saving fails), error handling, and that user answers are not logged.
+- `src/app/api/openai/route.test.ts`: the API route with Clerk and OpenAI mocked. It covers auth (401), validation (400), rate limiting (429), the OpenAI call options, invalid or truncated model replies (502), saving the attempt (and still returning the evaluation when saving fails), demo limits (403, giving a use back when OpenAI fails, no limit for owners), error handling, and that user answers are not logged.
 - `src/app/api/attempts/route.test.ts`: history and delete with the database mocked: auth (401), validation (400) and database errors (500).
-- `src/lib/*.test.ts`: `formatTime` and `cn`, the evaluation validator and JSON schema, and the rate limiter.
+- `src/app/api/demo/route.test.ts`: the demo status for guests and owners.
+- `src/lib/*.test.ts`: `formatTime` and `cn`, the evaluation validator and JSON schema, the rate limiter, demo config and messages, and the owner check.
 - `src/data/react-questions.test.ts`: the question bank (every topic is used) and `isKnownQuestion`.
 - `src/components/question-picker.test.tsx`: the component in happy-dom, including the no-immediate-repeat rule.
 
@@ -203,6 +219,7 @@ The app is ready to deploy on [Vercel](https://vercel.com). Add the environment 
 
 ## Notes and limitations
 
+- Demo limits protect the OpenAI key inside the app. Also set a monthly budget in the OpenAI dashboard as a last line of defense.
 - The history shows your latest 100 answers. Older ones stay in the database for progress tracking.
 - Speech recognition is set to Polish (`pl-PL`), so answers in other languages will be transcribed poorly.
 - The rate limit is kept in memory per server instance. On serverless platforms it slows down abuse but is not a strict global limit. Use a shared store (e.g. Upstash Redis) for that.
