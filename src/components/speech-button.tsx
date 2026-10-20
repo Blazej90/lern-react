@@ -14,6 +14,24 @@ import { parseEvaluation } from "@/lib/evaluation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 
+const SPEECH_ERROR_MESSAGES: Record<string, string> = {
+  "not-allowed":
+    "Brak dostępu do mikrofonu. Zezwól na mikrofon w ustawieniach strony (ikona kłódki przy adresie) i spróbuj ponownie.",
+  "service-not-allowed":
+    "Przeglądarka zablokowała usługę rozpoznawania mowy. Użyj Chrome lub Edge.",
+  "audio-capture":
+    "Nie wykryto mikrofonu. Sprawdź, czy jest podłączony i wybrany w ustawieniach systemu.",
+  network:
+    "Błąd sieci podczas rozpoznawania mowy. Sprawdź połączenie z internetem. Jeśli używasz Brave lub Opery, spróbuj w Chrome lub Edge.",
+  "no-speech": "Nie wykryto mowy. Mów bliżej mikrofonu i spróbuj ponownie.",
+  "language-not-supported":
+    "Przeglądarka nie obsługuje rozpoznawania mowy w języku polskim.",
+};
+
+const DEFAULT_SPEECH_ERROR = "Wystąpił błąd rozpoznawania mowy.";
+const EMPTY_TRANSCRIPT_MESSAGE =
+  "Nie rozpoznano żadnej wypowiedzi. Sprawdź mikrofon i spróbuj ponownie.";
+
 interface SpeechButtonProps {
   question: string;
   onClose: () => void;
@@ -30,6 +48,9 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [feedback, setFeedback] = useState<StoredAIResponse | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [speechError, setSpeechError] = useState<string | null>(null);
+  // Set by the recognition `error` event, which fires before `end`.
+  const speechErrorRef = useRef<string | null>(null);
 
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -42,6 +63,24 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
 
   useEffect(() => {
     setIsClient(true);
+  }, []);
+
+  // react-speech-recognition swallows recognition errors, so listen on the
+  // native instance directly to tell the user why no text appeared.
+  useEffect(() => {
+    const recognition = SpeechRecognition.getRecognition();
+    if (!recognition) return;
+
+    const handleError = (event: SpeechRecognitionErrorEvent) => {
+      if (event.error === "aborted") return;
+      const message =
+        SPEECH_ERROR_MESSAGES[event.error] ?? DEFAULT_SPEECH_ERROR;
+      speechErrorRef.current = message;
+      setSpeechError(message);
+    };
+
+    recognition.addEventListener("error", handleError);
+    return () => recognition.removeEventListener("error", handleError);
   }, []);
 
   useEffect(() => {
@@ -62,6 +101,8 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
   const handleStartListening = () => {
     resetTranscript();
     setRecordingTime(0);
+    speechErrorRef.current = null;
+    setSpeechError(null);
     SpeechRecognition.startListening({ continuous: true, language: "pl-PL" });
   };
 
@@ -108,7 +149,10 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
 
   const submitAnswer = useCallback(() => {
     const answer = transcript.trim();
-    if (!answer) return;
+    if (!answer) {
+      if (!speechErrorRef.current) setSpeechError(EMPTY_TRANSCRIPT_MESSAGE);
+      return;
+    }
 
     getAIResponse(answer);
     onSave(question, answer, recordingTime);
@@ -153,6 +197,15 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
           onStart={handleStartListening}
           onStop={handleStopListening}
         />
+
+        {speechError && (
+          <p
+            role="alert"
+            className="w-full text-sm sm:text-base text-red-500 text-center"
+          >
+            {speechError}
+          </p>
+        )}
 
         <Textarea
           ref={textareaRef}
