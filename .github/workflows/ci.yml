@@ -31,3 +31,10 @@ jobs:
 
       - name: Test
         run: npm test
+
+      # Clerk needs its keys to prerender pages; use test-instance keys.
+      - name: Build
+        run: npm run build
+        env:
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.CLERK_TEST_PUBLISHABLE_KEY }}
+          CLERK_SECRET_KEY: ${{ secrets.CLERK_TEST_SECRET_KEY }}
