@@ -34,31 +34,48 @@ function request(body: unknown) {
   });
 }
 
-function aiReply(content: string | null) {
-  return { choices: [{ message: { content } }] };
+const EVALUATION = {
+  score: 7,
+  feedback: "Twoja odpowiedź była dobra.",
+  strengths: ["Poprawna definicja"],
+  gaps: ["Brak przykładu"],
+  tips: ["Pokaż przykład z useState"],
+};
+
+function aiReply(content: string | null, finishReason = "stop") {
+  return { choices: [{ message: { content }, finish_reason: finishReason }] };
 }
 
 describe("POST /api/openai", () => {
   beforeEach(() => {
     vi.stubEnv("OPENAI_API_KEY", "test-key");
-    mocks.create.mockResolvedValue(aiReply("Twoja odpowiedź była dobra."));
+    mocks.create.mockResolvedValue(aiReply(JSON.stringify(EVALUATION)));
     signInAsNewUser();
   });
 
-  it("returns the AI feedback for a valid request", async () => {
+  it("returns the structured evaluation for a valid request", async () => {
     const res = await POST(request({ question: QUESTION, userAnswer: "  Hook do stanu.  " }));
 
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ aiAnswer: "Twoja odpowiedź była dobra." });
+    expect(await res.json()).toEqual({ evaluation: EVALUATION });
   });
 
-  it("calls OpenAI with a trimmed, delimited answer, SDK timeout and no retries", async () => {
+  it("calls OpenAI with a trimmed, delimited answer, JSON schema, SDK timeout and no retries", async () => {
     await POST(request({ question: QUESTION, userAnswer: "  Hook do stanu.  " }));
 
     expect(mocks.create).toHaveBeenCalledTimes(1);
     const [params, options] = mocks.create.mock.calls[0];
     expect(params.model).toBe("gpt-4o-mini");
-    expect(params.max_tokens).toBe(300);
+    expect(params.max_tokens).toBe(600);
+    expect(params.response_format.type).toBe("json_schema");
+    expect(params.response_format.json_schema.strict).toBe(true);
+    expect(params.response_format.json_schema.schema.required).toEqual([
+      "score",
+      "feedback",
+      "strengths",
+      "gaps",
+      "tips",
+    ]);
     expect(params.messages[1].content).toContain(QUESTION);
     expect(params.messages[1].content).toContain(
       "<odpowiedz>\nHook do stanu.\n</odpowiedz>",
@@ -74,12 +91,31 @@ describe("POST /api/openai", () => {
     expect(mocks.create.mock.calls[0][0].model).toBe("gpt-4.1-mini");
   });
 
-  it("falls back to a default message when OpenAI returns no content", async () => {
-    mocks.create.mockResolvedValue(aiReply(null));
+  it("clamps the score to the 0–10 range", async () => {
+    mocks.create.mockResolvedValue(aiReply(JSON.stringify({ ...EVALUATION, score: 14 })));
 
     const res = await POST(request({ question: QUESTION, userAnswer: "Odpowiedź" }));
 
-    expect(await res.json()).toEqual({ aiAnswer: "Brak odpowiedzi AI." });
+    expect((await res.json()).evaluation.score).toBe(10);
+  });
+
+  it.each([
+    ["no content", aiReply(null)],
+    ["invalid JSON", aiReply("{not json")],
+    ["JSON of the wrong shape", aiReply(JSON.stringify({ score: "7" }))],
+    ["a truncated reply", aiReply(JSON.stringify(EVALUATION), "length")],
+    ["a refusal", aiReply(null, "content_filter")],
+    ["no choices", { choices: [] }],
+  ])("returns 502 when OpenAI returns %s", async (_label, reply) => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    mocks.create.mockResolvedValue(reply);
+
+    const res = await POST(request({ question: QUESTION, userAnswer: "Odpowiedź" }));
+
+    expect(res.status).toBe(502);
+    expect(await res.json()).toEqual({
+      error: "AI nie zwróciło poprawnej oceny. Spróbuj ponownie.",
+    });
   });
 
   it("returns 500 when the API key is missing", async () => {

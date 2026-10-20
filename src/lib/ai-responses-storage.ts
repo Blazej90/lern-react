@@ -1,9 +1,18 @@
+import { parseEvaluation, type Evaluation } from "@/lib/evaluation";
+
 // Persists AI feedback per question in localStorage. Every access is guarded:
 // storage can be unavailable (private mode, blocked cookies) or corrupted.
 const STORAGE_KEY = "aiResponses";
 const MAX_VERSIONS_PER_QUESTION = 5;
 
-type StoredResponses = Record<string, string[]>;
+// Plain strings are free-text feedback saved before structured evaluations.
+export type StoredAIResponse = string | Evaluation;
+
+type StoredResponses = Record<string, StoredAIResponse[]>;
+
+function parseStoredResponse(value: unknown): StoredAIResponse | null {
+  return typeof value === "string" ? value : parseEvaluation(value);
+}
 
 function readAll(): StoredResponses {
   try {
@@ -14,9 +23,9 @@ function readAll(): StoredResponses {
     const result: StoredResponses = {};
     for (const [question, responses] of Object.entries(parsed)) {
       if (Array.isArray(responses)) {
-        result[question] = responses.filter(
-          (r): r is string => typeof r === "string",
-        );
+        result[question] = responses
+          .map(parseStoredResponse)
+          .filter((r): r is StoredAIResponse => r !== null);
       }
     }
     return result;
@@ -33,11 +42,11 @@ function writeAll(data: StoredResponses): void {
   }
 }
 
-export function getAIResponses(question: string): string[] {
+export function getAIResponses(question: string): StoredAIResponse[] {
   return readAll()[question] ?? [];
 }
 
-export function addAIResponse(question: string, response: string): void {
+export function addAIResponse(question: string, response: StoredAIResponse): void {
   const data = readAll();
   data[question] = [...(data[question] ?? []), response].slice(
     -MAX_VERSIONS_PER_QUESTION,
