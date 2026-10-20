@@ -68,6 +68,7 @@ An interactive web app for practicing **React.js interview and exam questions by
 | Icons | [Lucide React](https://lucide.dev) |
 | Theming | [next-themes](https://github.com/pacocoursey/next-themes) |
 | Utilities | `clsx`, `tailwind-merge`, `class-variance-authority` |
+| Package manager | [pnpm](https://pnpm.io) (dependency install scripts are blocked unless allowed in `pnpm-workspace.yaml`) |
 | Linting | ESLint 9 (flat config, `eslint.config.mjs`) + `eslint-config-next` |
 | Testing | [Vitest](https://vitest.dev), [Testing Library](https://testing-library.com/docs/react-testing-library/intro/), [happy-dom](https://github.com/capricorn86/happy-dom) |
 | CI | GitHub Actions: lint, type check, tests and production build on every pull request and push to `main` |
@@ -114,6 +115,7 @@ src/
 ### Prerequisites
 
 - Node.js 22.12+ (required by Vitest; see `.nvmrc`)
+- [pnpm](https://pnpm.io) 11 (the exact version is pinned in `package.json` under `packageManager`; run `corepack enable` to use it automatically)
 - A [Clerk](https://dashboard.clerk.com) application (publishable and secret keys)
 - An [OpenAI API key](https://platform.openai.com/api-keys)
 - A browser that supports the Web Speech API (Chrome or Edge are recommended; Firefox does not support it)
@@ -123,7 +125,7 @@ src/
 ```bash
 git clone <repository-url>
 cd lern-react-main
-npm install
+pnpm install
 ```
 
 ### Environment variables
@@ -142,13 +144,13 @@ OPENAI_MODEL=gpt-4o-mini
 
 | Command | Description |
 | --- | --- |
-| `npm run dev` | Start the development server at http://localhost:3000 |
-| `npm run build` | Create a production build |
-| `npm run start` | Run the production build |
-| `npm run lint` | Run ESLint |
-| `npm run typecheck` | Type-check the project with `tsc` |
-| `npm test` | Run the test suite once |
-| `npm run test:watch` | Run tests in watch mode |
+| `pnpm dev` | Start the development server at http://localhost:3000 |
+| `pnpm build` | Create a production build |
+| `pnpm start` | Run the production build |
+| `pnpm lint` | Run ESLint |
+| `pnpm typecheck` | Type-check the project with `tsc` |
+| `pnpm test` | Run the test suite once |
+| `pnpm test:watch` | Run tests in watch mode |
 
 ### Tests
 
@@ -240,4 +242,3 @@ progress_reports  id, user_id, summary, weak_topics[], recommended_questions[], 
 - **Framework upgrades:** move to React 19 and Next.js 16 once the dependencies (`react-speech-recognition`, Clerk) support them.
 - **Browser data:** refresh it with `npx update-browserslist-db@latest`, and keep it fresh through the dependency bot.
 - **AI model:** periodically compare newer or cheaper models against a small set of reference answers before switching `OPENAI_MODEL`.
-- **Package manager:** optionally migrate to pnpm for faster installs and stricter dependency resolution.

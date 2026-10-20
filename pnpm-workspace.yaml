@@ -1,0 +1,6 @@
+# pnpm runs dependency install scripts only when they are listed here.
+allowBuilds:
+  # Only prints a telemetry notice.
+  '@clerk/shared': false
+  # Fallback download of a native binary; pnpm installs the platform package.
+  unrs-resolver: false
