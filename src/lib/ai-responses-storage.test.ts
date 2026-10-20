@@ -60,10 +60,28 @@ describe("ai-responses-storage", () => {
     expect(getAIResponses("q")).toEqual(["a"]);
   });
 
+  it("stores structured evaluations next to legacy text responses", () => {
+    const evaluation = {
+      score: 8,
+      feedback: "Twoja odpowiedź była dobra.",
+      strengths: ["a"],
+      gaps: [],
+      tips: ["b"],
+    };
+
+    addAIResponse("q", "stara odpowiedź");
+    addAIResponse("q", evaluation);
+
+    expect(getAIResponses("q")).toEqual(["stara odpowiedź", evaluation]);
+  });
+
   it("ignores values of the wrong shape", () => {
     storage.setItem(
       STORAGE_KEY,
-      JSON.stringify({ q: ["a", 1, null, "b"], other: "not-an-array" }),
+      JSON.stringify({
+        q: ["a", 1, null, { score: "8" }, "b"],
+        other: "not-an-array",
+      }),
     );
 
     expect(getAIResponses("q")).toEqual(["a", "b"]);

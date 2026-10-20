@@ -10,9 +10,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader2, Bot } from "lucide-react";
+import EvaluationView from "@/components/evaluation-view";
+import type { StoredAIResponse } from "@/lib/ai-responses-storage";
 
 const AIResponse: React.FC<{
-  feedback: string | null;
+  feedback: StoredAIResponse | null;
   isOpen: boolean;
   onClose: () => void;
   isLoading: boolean;
@@ -44,14 +46,10 @@ const AIResponse: React.FC<{
                   AI analizuje odpowiedź<span className="animate-bounce">...</span>
                 </span>
               </div>
-            ) : feedback.trim() ? (
-              <div className="text-base sm:text-lg whitespace-pre-wrap leading-relaxed animate-in fade-in duration-500">
-                {feedback}
-              </div>
             ) : (
-              <p className="text-base sm:text-lg leading-relaxed text-muted-foreground">
-                Brak odpowiedzi od AI.
-              </p>
+              <div className="text-base sm:text-lg animate-in fade-in duration-500">
+                <EvaluationView response={feedback} />
+              </div>
             )}
           </ScrollArea>
         </div>

@@ -9,7 +9,8 @@ import MicrophoneButton from "@/components/microphone-button";
 import axios from "axios";
 import "regenerator-runtime/runtime";
 import AIResponse from "@/components/ai-response";
-import { addAIResponse } from "@/lib/ai-responses-storage";
+import { addAIResponse, type StoredAIResponse } from "@/lib/ai-responses-storage";
+import { parseEvaluation } from "@/lib/evaluation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -27,7 +28,7 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
   const [isClient, setIsClient] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
-  const [feedback, setFeedback] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<StoredAIResponse | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -80,13 +81,13 @@ const SpeechButton: React.FC<SpeechButtonProps> = ({
           question,
         });
 
-        const raw = response.data.aiAnswer;
-        const aiAnswer = raw && raw.trim().length > 0 ? raw : null;
+        const evaluation = parseEvaluation(response.data?.evaluation);
 
-        setFeedback(aiAnswer);
-
-        if (aiAnswer) {
-          addAIResponse(question, aiAnswer);
+        if (evaluation) {
+          setFeedback(evaluation);
+          addAIResponse(question, evaluation);
+        } else {
+          setFeedback("Brak odpowiedzi od AI.");
         }
       } catch (error) {
         console.error("Error getting response from OpenAI:", error);

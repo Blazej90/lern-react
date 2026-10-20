@@ -20,7 +20,11 @@ import {
 } from "@/components/ui/card";
 import { HelpCircle, MessageSquare, Bot } from "lucide-react";
 import { formatTime } from "@/lib/utils";
-import { getAIResponses } from "@/lib/ai-responses-storage";
+import {
+  getAIResponses,
+  type StoredAIResponse,
+} from "@/lib/ai-responses-storage";
+import EvaluationView from "@/components/evaluation-view";
 
 interface Result {
   question: string;
@@ -34,17 +38,12 @@ interface ResultListProps {
 }
 
 const ResultList: React.FC<ResultListProps> = ({ results, onDelete }) => {
-  const [selectedResponse, setSelectedResponse] = useState<string | null>(null);
+  const [selectedResponses, setSelectedResponses] = useState<
+    StoredAIResponse[] | null
+  >(null);
 
   const handleShowAIResponse = (question: string) => {
-    const responses = getAIResponses(question);
-    setSelectedResponse(
-      responses.length > 0
-        ? responses
-            .map((res, i) => `Wersja ${i + 1}:\n${res}`)
-            .join("\n\n---\n\n")
-        : "Brak odpowiedzi AI.",
-    );
+    setSelectedResponses(getAIResponses(question));
   };
 
   return (
@@ -98,9 +97,9 @@ const ResultList: React.FC<ResultListProps> = ({ results, onDelete }) => {
       </ScrollArea>
 
       <Dialog
-        open={selectedResponse !== null}
+        open={selectedResponses !== null}
         onOpenChange={(open) => {
-          if (!open) setSelectedResponse(null);
+          if (!open) setSelectedResponses(null);
         }}
       >
         <DialogContent className="w-full max-w-sm sm:max-w-md">
@@ -114,9 +113,21 @@ const ResultList: React.FC<ResultListProps> = ({ results, onDelete }) => {
             </DialogDescription>
           </DialogHeader>
 
-          <ScrollArea className="max-h-60 p-3 sm:p-4 border border-gray-300 dark:border-gray-700 rounded-md">
-            <div className="text-sm sm:text-base whitespace-pre-wrap leading-relaxed">
-              {selectedResponse}
+          <ScrollArea className="max-h-[60vh] p-3 sm:p-4 border border-gray-300 dark:border-gray-700 rounded-md">
+            <div className="text-sm sm:text-base">
+              {selectedResponses && selectedResponses.length > 0 ? (
+                selectedResponses.map((response, i) => (
+                  <div
+                    key={i}
+                    className="border-b border-gray-300 dark:border-gray-700 pb-4 mb-4 last:border-b-0 last:pb-0 last:mb-0"
+                  >
+                    <p className="font-semibold mb-2">Wersja {i + 1}</p>
+                    <EvaluationView response={response} />
+                  </div>
+                ))
+              ) : (
+                <p className="leading-relaxed">Brak odpowiedzi AI.</p>
+              )}
             </div>
           </ScrollArea>
 

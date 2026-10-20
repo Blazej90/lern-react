@@ -14,9 +14,9 @@ An interactive web app for practicing **React.js interview and exam questions by
 - **Random question picker**: draws a question from a built-in bank of 28 React topics (hooks, Virtual DOM, props, keys, Context, Redux, React Router, `React.memo`, Suspense, lazy loading, HOCs, controlled and uncontrolled components, TypeScript with React, and more). The same question never comes up twice in a row.
 - **Voice answers (speech-to-text)**: records your answer in Polish (`pl-PL`) with the browser's Web Speech API through `react-speech-recognition` in continuous mode. The transcript appears live in an auto-resizing textarea.
 - **Recording timer**: shows how long you have been answering (`mm:ss`). It resets on each new recording, and the time is saved with each answer.
-- **AI feedback**: when recording stops, the transcript and question are sent to `/api/openai`. The endpoint asks `gpt-4o-mini` (configurable with `OPENAI_MODEL`) to review the answer as a friendly React teacher. The feedback opens in a bottom drawer (Vaul).
+- **AI evaluation**: when recording stops, the transcript and question are sent to `/api/openai`. The endpoint asks `gpt-4o-mini` (configurable with `OPENAI_MODEL`) to grade the answer as a friendly React teacher. It uses Structured Outputs, so every evaluation has the same shape: a score from 0 to 10, a short summary, what was right, what was missing, and tips. The evaluation opens in a bottom drawer (Vaul).
 - **Answer history**: each answered question appears as a card with your transcript and response time. Answering the same question again replaces the earlier card, and you can delete cards.
-- **Saved AI responses**: AI responses are stored in `localStorage` under their question (the latest 5 per question), so you can open earlier versions ("Wersja 1, Wersja 2, …") in a dialog. Deleting a card also deletes its saved responses.
+- **Saved AI responses**: AI evaluations are stored in `localStorage` under their question (the latest 5 per question), so you can open earlier versions ("Wersja 1, Wersja 2, …") in a dialog. Deleting a card also deletes its saved responses.
 - **Light, dark and system themes**: a theme switcher built with `next-themes`.
 - **Responsive, animated UI**: a mobile-first layout with blurred gradient "blob" backgrounds, built with Tailwind CSS and shadcn/ui components.
 
@@ -31,23 +31,23 @@ An interactive web app for practicing **React.js interview and exam questions by
 │   client)    │ ─────────────────────────────────────────────┐
 └──────────────┘                                              ▼
        ▲                                     ┌─────────────────────────────┐
-       │  5. { aiAnswer } → drawer +         │  Next.js Route Handler       │
+       │  5. { evaluation } → drawer +       │  Next.js Route Handler       │
        │     localStorage history            │  src/app/api/openai/route.ts │
        │                                     │  • Clerk auth() check (401)  │
        │                                     │  • rate limit (429)          │
        └──────────────────────────────────── │  • known question, answer    │
                                              │    ≤ 2000 chars (400)        │
                                              │  4. OpenAI Chat Completions  │
-                                             │     gpt-4o-mini, 300 tokens, │
-                                             │     9 s timeout, no retries  │
+                                             │     gpt-4o-mini, JSON schema │
+                                             │     600 tokens, 9 s timeout  │
                                              └─────────────────────────────┘
 ```
 
 1. `middleware.ts` (Clerk middleware) protects every route except `/sign-in` and `/sign-up`. Signed-out users are redirected to the app's own sign-in page.
 2. On the home page, the user draws a question (`question-picker.tsx`).
 3. `speech-button.tsx` starts and stops speech recognition, runs the timer, and sends the transcript to the API once recording stops.
-4. The API route checks that `OPENAI_API_KEY` is set and that a Clerk session exists. It applies a per-user rate limit (10 requests per minute) and accepts only questions from the shared bank (`src/data/react-questions.ts`) with answers up to 2000 characters. This prevents the endpoint from being used as a general-purpose GPT proxy. It then calls OpenAI with a system prompt ("You are a React teacher who evaluates students' answers…"). The call uses the SDK's 9-second timeout with retries disabled, so it fits within serverless function limits and aborts the request when it runs too long.
-5. The feedback is shown in `ai-response.tsx` and saved in `localStorage` (`src/lib/ai-responses-storage.ts`). The answer is added to `result-list.tsx`.
+4. The API route checks that `OPENAI_API_KEY` is set and that a Clerk session exists. It applies a per-user rate limit (10 requests per minute) and accepts only questions from the shared bank (`src/data/react-questions.ts`) with answers up to 2000 characters. This prevents the endpoint from being used as a general-purpose GPT proxy. It then calls OpenAI with a system prompt ("You are a React teacher who evaluates students' answers…"). The reply must match a JSON schema (Structured Outputs, `src/lib/evaluation.ts`); a truncated or invalid reply returns 502. The call uses the SDK's 9-second timeout with retries disabled, so it fits within serverless function limits and aborts the request when it runs too long.
+5. The evaluation is shown in `ai-response.tsx` and saved in `localStorage` (`src/lib/ai-responses-storage.ts`). The answer is added to `result-list.tsx`.
 
 ---
 
@@ -91,7 +91,8 @@ src/
 │   ├── speech-button.tsx     # Speech recognition, timer, API call
 │   ├── microphone-button.tsx # Start/stop recording button
 │   ├── recording-timer.tsx   # mm:ss timer
-│   ├── ai-response.tsx       # Drawer with AI feedback
+│   ├── ai-response.tsx       # Drawer with the AI evaluation
+│   ├── evaluation-view.tsx   # Score, summary, strengths, gaps and tips
 │   ├── result-list.tsx       # Answer history cards + saved AI responses
 │   ├── mode-toggle.tsx       # Light/dark/system switch
 │   ├── theme-provider.tsx    # next-themes wrapper
@@ -99,7 +100,8 @@ src/
 ├── data/react-questions.ts   # Question bank shared by client and API
 ├── lib/
 │   ├── utils.ts              # cn() helper, formatTime()
-│   ├── ai-responses-storage.ts  # Guarded localStorage for AI response history
+│   ├── evaluation.ts         # Evaluation type, JSON schema and validator
+│   ├── ai-responses-storage.ts  # Guarded localStorage for AI evaluation history
 │   └── rate-limit.ts         # In-memory per-user rate limiter
 ├── types/css.d.ts            # Type declaration for CSS imports
 └── middleware.ts             # Clerk route protection
@@ -152,8 +154,8 @@ OPENAI_MODEL=gpt-4o-mini
 
 Tests sit next to the code they cover (`*.test.ts` / `*.test.tsx`):
 
-- `src/app/api/openai/route.test.ts`: the API route with Clerk and OpenAI mocked. It covers auth (401), validation (400), rate limiting (429), the OpenAI call options, error handling, and that user answers are not logged.
-- `src/lib/*.test.ts`: `formatTime` and `cn`, the rate limiter, and the `localStorage` helpers (including corrupted and blocked storage).
+- `src/app/api/openai/route.test.ts`: the API route with Clerk and OpenAI mocked. It covers auth (401), validation (400), rate limiting (429), the OpenAI call options, invalid or truncated model replies (502), error handling, and that user answers are not logged.
+- `src/lib/*.test.ts`: `formatTime` and `cn`, the evaluation validator and JSON schema, the rate limiter, and the `localStorage` helpers (including corrupted and blocked storage).
 - `src/data/react-questions.test.ts`: the question bank and `isKnownQuestion`.
 - `src/components/question-picker.test.tsx`: the component in happy-dom, including the no-immediate-repeat rule.
 
@@ -161,7 +163,7 @@ Tests sit next to the code they cover (`*.test.ts` / `*.test.tsx`):
 
 ## Deployment
 
-The app is ready to deploy on [Vercel](https://vercel.com). Add the environment variables above in the project settings. The OpenAI request is capped at 300 output tokens and a 9-second timeout so it fits within the serverless function time limits of the default plan.
+The app is ready to deploy on [Vercel](https://vercel.com). Add the environment variables above in the project settings. The OpenAI request is capped at 600 output tokens and a 9-second timeout so it fits within the serverless function time limits of the default plan.
 
 ---
 
@@ -202,13 +204,13 @@ The app is ready to deploy on [Vercel](https://vercel.com). Add the environment 
 users             id (Clerk userId), created_at
 questions         id, text, topic, difficulty           ← migrated from src/data/react-questions.ts
 attempts          id, user_id, question_id, transcript, duration_seconds, created_at
-evaluations       id, attempt_id, score (0–10), strengths[], gaps[], feedback_text, model, created_at
+evaluations       id, attempt_id, score (0–10), feedback, strengths[], gaps[], tips[], model, created_at
 progress_reports  id, user_id, summary, weak_topics[], recommended_questions[], created_at
 ```
 
 #### Implementation plan
 
-1. **Structured evaluations:** switch the OpenAI call to [Structured Outputs](https://platform.openai.com/docs/guides/structured-outputs) (JSON schema) so each answer gets a numeric `score`, `strengths`, `gaps` and `topic` next to the feedback text. Progress can only be measured if scores are consistent and machine-readable.
+1. **Structured evaluations (done):** the OpenAI call uses [Structured Outputs](https://platform.openai.com/docs/guides/structured-outputs) (JSON schema), so each answer gets a numeric `score`, `feedback`, `strengths`, `gaps` and `tips`. The topic is not taken from the model: it will come from the `questions` table, so topic names stay consistent across attempts.
 2. **Database setup:** Neon project, Drizzle schema and migrations, and `DATABASE_URL` in `.env.local` and Vercel.
 3. **Persist attempts:** `/api/openai` saves the attempt and evaluation in the same request, keyed by the Clerk `userId`. This replaces the `localStorage` history (`ai-responses-storage.ts`). Existing local history can optionally be imported on first sign-in.
 4. **Progress in SQL:** average score per topic, trend over the last N attempts, most improved and weakest topics, and questions never answered.
