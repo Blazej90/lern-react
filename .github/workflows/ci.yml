@@ -35,6 +35,17 @@ jobs:
       - name: Test
         run: pnpm test
 
+      # Fails when src/db/schema.ts changed without `pnpm db:generate`.
+      - name: Check database migrations
+        run: |
+          pnpm db:generate
+          changes=$(git status --porcelain -- drizzle)
+          if [ -n "$changes" ]; then
+            echo "::error::Migrations are out of date. Run pnpm db:generate and commit drizzle/."
+            echo "$changes"
+            exit 1
+          fi
+
       # Clerk needs its keys to prerender pages; use test-instance keys.
       - name: Build
         run: pnpm build

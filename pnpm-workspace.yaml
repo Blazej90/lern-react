@@ -2,5 +2,7 @@
 allowBuilds:
   # Only prints a telemetry notice.
   '@clerk/shared': false
+  # Only verifies the binary; pnpm installs the platform package.
+  esbuild: false
   # Fallback download of a native binary; pnpm installs the platform package.
   unrs-resolver: false
