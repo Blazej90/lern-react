@@ -1,6 +1,12 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
-const isPublicRoute = createRouteMatcher(["/sign-in(.*)", "/sign-up(.*)"]);
+const isPublicRoute = createRouteMatcher([
+  "/sign-in(.*)",
+  "/sign-up(.*)",
+  "/privacy",
+  // Verified with the Svix signature instead of a session.
+  "/api/webhooks/clerk",
+]);
 
 export default clerkMiddleware(
   async (auth, req) => {
