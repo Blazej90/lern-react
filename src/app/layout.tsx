@@ -1,4 +1,5 @@
 import "regenerator-runtime/runtime";
+import Link from "next/link";
 import { ClerkProvider } from "@clerk/nextjs";
 import { UserMenu } from "@/components/user-menu";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -39,6 +40,12 @@ export default function RootLayout({
             </header>
 
             <main className="flex-grow w-full">{children}</main>
+
+            <footer className="p-4 text-center text-xs sm:text-sm text-muted-foreground">
+              <Link href="/privacy" className="underline underline-offset-4">
+                Prywatność i dane
+              </Link>
+            </footer>
           </ThemeProvider>
         </body>
       </html>

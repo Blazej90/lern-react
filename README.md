@@ -17,6 +17,7 @@ An interactive web app for practicing **React.js interview and exam questions by
 - **AI evaluation**: when recording stops, the transcript and question are sent to `/api/openai`. The endpoint asks `gpt-4o-mini` (configurable with `OPENAI_MODEL`) to grade the answer as a friendly React teacher. It uses Structured Outputs, so every evaluation has the same shape: a score from 0 to 10, a short summary, what was right, what was missing, and tips. The evaluation opens in a bottom drawer (Vaul).
 - **Answer history in the database**: every answer and its evaluation are saved in PostgreSQL (Neon) under your Clerk account, so the history survives reloads and is available on any device. Each question has one card with your latest transcript, score, response time and date. "Odpowiedź AI" opens every evaluation of that question ("Wersja 1, Wersja 2, …"), and "Usuń" deletes all your answers to it.
 - **Demo mode**: the app runs on the owner's OpenAI key, so anyone whose verified email is not in `OWNER_EMAILS` gets a limited demo: 3 evaluations per account (`DEMO_QUESTION_LIMIT`) and 20 per day for all demo users together (`DEMO_DAILY_LIMIT`). A banner shows how many questions are left, and the picker is disabled when none are.
+- **Privacy and your data (GDPR)**: the `/privacy` page ("Prywatność i dane", linked in the footer and the avatar menu) explains what is stored and who processes it. Signed-in users can download all their data as JSON and delete their whole answer history. Deleting the Clerk account deletes all of the user's data through a Clerk webhook.
 - **Light, dark and system themes**: a theme switcher built with `next-themes`.
 - **Responsive, animated UI**: a mobile-first layout with blurred gradient "blob" backgrounds, built with Tailwind CSS and shadcn/ui components.
 
@@ -88,6 +89,9 @@ src/
 │   ├── api/openai/route.ts   # POST endpoint: auth, validation, rate limit, OpenAI feedback, save attempt
 │   ├── api/attempts/route.ts # GET history, DELETE a question's attempts (signed-in user only)
 │   ├── api/demo/route.ts     # GET the signed-in user's demo status
+│   ├── api/my-data/route.ts  # GET a JSON export, DELETE the whole history (signed-in user only)
+│   ├── api/webhooks/clerk/route.ts  # Clerk webhook: user.deleted removes all the user's data
+│   ├── privacy/page.tsx      # Privacy page (public) with export and delete buttons
 │   ├── sign-in/[[...sign-in]]/page.tsx  # Clerk sign-in page (catch-all route)
 │   ├── sign-up/[[...sign-up]]/page.tsx  # Clerk sign-up page (catch-all route)
 │   ├── layout.tsx            # ClerkProvider, ThemeProvider, header, background blobs
@@ -102,6 +106,8 @@ src/
 │   ├── evaluation-view.tsx   # Score, summary, strengths, gaps and tips
 │   ├── result-list.tsx       # History cards (one per question) + evaluations dialog
 │   ├── demo-banner.tsx       # Demo mode banner with the remaining questions
+│   ├── data-controls.tsx     # Download data / delete history buttons
+│   ├── user-menu.tsx         # Clerk avatar menu with a privacy link
 │   ├── mode-toggle.tsx       # Light/dark/system switch
 │   ├── theme-provider.tsx    # next-themes wrapper
 │   └── ui/                   # shadcn/ui components
@@ -110,7 +116,8 @@ src/
 │   ├── schema.ts             # Drizzle schema: users, questions, attempts, evaluations, demo_usage
 │   ├── index.ts              # Lazily created Drizzle client (Neon HTTP driver)
 │   ├── attempts.ts           # Save, list and delete attempts with their evaluations
-│   └── demo.ts               # Reserve, give back and read demo uses
+│   ├── demo.ts               # Reserve, give back and read demo uses
+│   └── user-data.ts          # Export a user's data, delete their history or the whole user
 ├── lib/
 │   ├── utils.ts              # cn() helper, formatTime()
 │   ├── evaluation.ts         # Evaluation type, JSON schema and validator
@@ -165,6 +172,8 @@ OWNER_EMAILS=you@example.com
 DEMO_QUESTION_LIMIT=3
 # Optional: evaluations per day for all demo users together, UTC (default 20)
 DEMO_DAILY_LIMIT=20
+# Clerk webhook signing secret (Dashboard → Webhooks → endpoint → Signing Secret)
+CLERK_WEBHOOK_SIGNING_SECRET=whsec_...
 ```
 
 Without `OWNER_EMAILS`, every user, including you, is in demo mode.
@@ -205,6 +214,8 @@ Tests sit next to the code they cover (`*.test.ts` / `*.test.tsx`):
 - `src/app/api/openai/route.test.ts`: the API route with Clerk and OpenAI mocked. It covers auth (401), validation (400), rate limiting (429), the OpenAI call options, invalid or truncated model replies (502), saving the attempt (and still returning the evaluation when saving fails), demo limits (403, giving a use back when OpenAI fails, no limit for owners), error handling, and that user answers are not logged.
 - `src/app/api/attempts/route.test.ts`: history and delete with the database mocked: auth (401), validation (400) and database errors (500).
 - `src/app/api/demo/route.test.ts`: the demo status for guests and owners.
+- `src/app/api/my-data/route.test.ts`: data export and history deletion: auth (401) and database errors (500).
+- `src/app/api/webhooks/clerk/route.test.ts`: the Clerk webhook with real Svix signatures: `user.deleted` removes the user, other events are ignored, bad or missing signatures return 400.
 - `src/lib/*.test.ts`: `formatTime` and `cn`, the evaluation validator and JSON schema, the rate limiter, demo config and messages, and the owner check.
 - `src/data/react-questions.test.ts`: the question bank (every topic is used) and `isKnownQuestion`.
 - `src/components/question-picker.test.tsx`: the component in happy-dom, including the no-immediate-repeat rule.
@@ -213,7 +224,7 @@ Tests sit next to the code they cover (`*.test.ts` / `*.test.tsx`):
 
 ## Deployment
 
-The app is ready to deploy on [Vercel](https://vercel.com). Add the environment variables above in the project settings; connecting Neon from **Storage** in Vercel adds `DATABASE_URL` and `DATABASE_URL_UNPOOLED` automatically. Set the function region to Frankfurt (`fra1`) to match a Neon database in `eu-central-1`. Migrations are not run on deploy yet: run `pnpm db:migrate` and `pnpm db:seed` against the production branch after a schema change. The OpenAI request is capped at 600 output tokens and a 9-second timeout so it fits within the serverless function time limits of the default plan.
+The app is ready to deploy on [Vercel](https://vercel.com). Add the environment variables above in the project settings; connecting Neon from **Storage** in Vercel adds `DATABASE_URL` and `DATABASE_URL_UNPOOLED` automatically. Set the function region to Frankfurt (`fra1`) to match a Neon database in `eu-central-1`. Migrations are not run on deploy yet: run `pnpm db:migrate` and `pnpm db:seed` against the production branch after a schema change. To delete user data when a Clerk account is deleted, add a webhook in the Clerk Dashboard (**Webhooks → Add Endpoint**) pointing to `https://<your-domain>/api/webhooks/clerk` with the `user.deleted` event, and set its signing secret as `CLERK_WEBHOOK_SIGNING_SECRET`. The OpenAI request is capped at 600 output tokens and a 9-second timeout so it fits within the serverless function time limits of the default plan.
 
 ---
 
