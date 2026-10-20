@@ -7,7 +7,8 @@ import { questions } from "@/db/schema";
 // Upserts the question bank by text. Questions removed from the bank stay
 // in the table, because past attempts still reference them.
 async function main() {
-  loadEnvConfig(process.cwd());
+  // Development mode, like drizzle.config.ts: .env.production* is ignored.
+  loadEnvConfig(process.cwd(), true);
 
   const rows = await getDb()
     .insert(questions)
