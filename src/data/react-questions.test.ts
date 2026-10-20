@@ -1,5 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { isKnownQuestion, REACT_QUESTIONS } from "./react-questions";
+import {
+  isKnownQuestion,
+  QUESTION_BANK,
+  QUESTION_TOPICS,
+  REACT_QUESTIONS,
+} from "./react-questions";
+
+describe("QUESTION_BANK", () => {
+  it("has at least one question in every topic", () => {
+    const usedTopics = new Set(QUESTION_BANK.map((q) => q.topic));
+    expect([...usedTopics].sort()).toEqual(Object.keys(QUESTION_TOPICS).sort());
+  });
+});
 
 describe("REACT_QUESTIONS", () => {
   it("has no duplicates", () => {
