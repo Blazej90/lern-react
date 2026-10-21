@@ -246,6 +246,8 @@ The app is ready to deploy on [Vercel](https://vercel.com). Add the environment 
 
 ## Roadmap
 
+The task checklist with what is done and what is left is in [TODO.md](TODO.md).
+
 ### Stage 1: Persistent answers and progress tracking (next)
 
 **Goal:** store every answer and its AI evaluation in a database, then let an AI agent analyze past answers and track each user's progress over time.
