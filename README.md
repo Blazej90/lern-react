@@ -16,6 +16,7 @@ An interactive web app for practicing **React.js interview and exam questions by
 - **Recording timer**: shows how long you have been answering (`mm:ss`). It resets on each new recording, and the time is saved with each answer.
 - **AI evaluation**: when recording stops, the transcript and question are sent to `/api/openai`. The endpoint asks `gpt-4o-mini` (configurable with `OPENAI_MODEL`) to grade the answer as a friendly React teacher. It uses Structured Outputs, so every evaluation has the same shape: a score from 0 to 10, a short summary, what was right, what was missing, and tips. The evaluation opens in a bottom drawer (Vaul).
 - **Answer history in the database**: every answer and its evaluation are saved in PostgreSQL (Neon) under your Clerk account, so the history survives reloads and is available on any device. Each question has one card with your latest transcript, score, response time and date. "Odpowiedź AI" opens every evaluation of that question ("Wersja 1, Wersja 2, …"), and "Usuń" deletes all your answers to it.
+- **Progress page**: `/progress` ("Postępy", linked from the avatar menu and above the history) shows your number of answers, average score, how many questions you have practiced, and a trend (your last answers compared with the ones before). A chart shows the scores of your latest 30 answers, and each topic has its average score, answered questions, and change from your first to your latest answers. It also lists the topics to review, the most improved topic, and the questions you have not answered yet. The stats are computed in SQL.
 - **Demo mode**: the app runs on the owner's OpenAI key, so anyone whose verified email is not in `OWNER_EMAILS` gets a limited demo: 3 evaluations per account (`DEMO_QUESTION_LIMIT`) and 20 per day for all demo users together (`DEMO_DAILY_LIMIT`). A banner shows how many questions are left, and the picker is disabled when none are.
 - **Privacy and your data (GDPR)**: the `/privacy` page ("Prywatność i dane", linked in the footer and the avatar menu) explains what is stored and who processes it. Signed-in users can download all their data as JSON and delete their whole answer history. Deleting the Clerk account deletes all of the user's data through a Clerk webhook.
 - **Light, dark and system themes**: a theme switcher built with `next-themes`.
@@ -91,6 +92,7 @@ src/
 │   ├── api/demo/route.ts     # GET the signed-in user's demo status
 │   ├── api/my-data/route.ts  # GET a JSON export, DELETE the whole history (signed-in user only)
 │   ├── api/webhooks/clerk/route.ts  # Clerk webhook: user.deleted removes all the user's data
+│   ├── progress/page.tsx     # Progress page: stats, score chart, topics, unanswered questions
 │   ├── privacy/page.tsx      # Privacy page (public) with export and delete buttons
 │   ├── sign-in/[[...sign-in]]/page.tsx  # Clerk sign-in page (catch-all route)
 │   ├── sign-up/[[...sign-up]]/page.tsx  # Clerk sign-up page (catch-all route)
@@ -106,6 +108,7 @@ src/
 │   ├── evaluation-view.tsx   # Score, summary, strengths, gaps and tips
 │   ├── result-list.tsx       # History cards (one per question) + evaluations dialog
 │   ├── demo-banner.tsx       # Demo mode banner with the remaining questions
+│   ├── score-chart.tsx       # Line chart of the latest scores with a hover/tap tooltip
 │   ├── data-controls.tsx     # Download data / delete history buttons
 │   ├── user-menu.tsx         # Clerk avatar menu with a privacy link
 │   ├── mode-toggle.tsx       # Light/dark/system switch
@@ -116,12 +119,14 @@ src/
 │   ├── schema.ts             # Drizzle schema: users, questions, attempts, evaluations, demo_usage
 │   ├── index.ts              # Lazily created Drizzle client (Neon HTTP driver)
 │   ├── attempts.ts           # Save, list and delete attempts with their evaluations
+│   ├── progress.ts           # Progress stats in SQL: per topic, latest scores, unanswered questions
 │   ├── demo.ts               # Reserve, give back and read demo uses
 │   └── user-data.ts          # Export a user's data, delete their history or the whole user
 ├── lib/
 │   ├── utils.ts              # cn() helper, formatTime()
 │   ├── evaluation.ts         # Evaluation type, JSON schema and validator
 │   ├── attempts.ts           # Attempt type shared by the API and the client
+│   ├── progress.ts           # Progress types, summary (trend, weakest, most improved), formatting
 │   ├── demo.ts               # Demo config (env), status and messages
 │   ├── owner.ts              # Owner check by verified Clerk email
 │   └── rate-limit.ts         # In-memory per-user rate limiter
@@ -216,7 +221,7 @@ Tests sit next to the code they cover (`*.test.ts` / `*.test.tsx`):
 - `src/app/api/demo/route.test.ts`: the demo status for guests and owners.
 - `src/app/api/my-data/route.test.ts`: data export and history deletion: auth (401) and database errors (500).
 - `src/app/api/webhooks/clerk/route.test.ts`: the Clerk webhook with real Svix signatures: `user.deleted` removes the user, other events are ignored, bad or missing signatures return 400.
-- `src/lib/*.test.ts`: `formatTime` and `cn`, the evaluation validator and JSON schema, the rate limiter, demo config and messages, and the owner check.
+- `src/lib/*.test.ts`: `formatTime` and `cn`, the evaluation validator and JSON schema, the progress summary and formatting, the rate limiter, demo config and messages, and the owner check.
 - `src/data/react-questions.test.ts`: the question bank (every topic is used) and `isKnownQuestion`.
 - `src/components/question-picker.test.tsx`: the component in happy-dom, including the no-immediate-repeat rule.
 
@@ -240,6 +245,8 @@ The app is ready to deploy on [Vercel](https://vercel.com). Add the environment 
 ---
 
 ## Roadmap
+
+The task checklist with what is done and what is left is in [TODO.md](TODO.md).
 
 ### Stage 1: Persistent answers and progress tracking (next)
 
@@ -275,10 +282,10 @@ progress_reports  id, user_id, summary, weak_topics[], recommended_questions[], 
 1. **Structured evaluations (done):** the OpenAI call uses [Structured Outputs](https://platform.openai.com/docs/guides/structured-outputs) (JSON schema), so each answer gets a numeric `score`, `feedback`, `strengths`, `gaps` and `tips`. The topic is not taken from the model: it will come from the `questions` table, so topic names stay consistent across attempts.
 2. **Database setup (done):** Neon project with a `dev` branch, Drizzle schema and migrations in `drizzle/`, a question seed with topics and difficulty, and a CI check that migrations match the schema. `progress_reports` will be added with step 5.
 3. **Persist attempts (done):** `/api/openai` saves the attempt and evaluation in one transaction, keyed by the Clerk `userId`, and the history is read from the database. The old `localStorage` history was dropped, not imported.
-4. **Progress in SQL:** average score per topic, trend over the last N attempts, most improved and weakest topics, and questions never answered.
+4. **Progress in SQL (done):** `src/db/progress.ts` computes, per topic, the average score, answered questions and the change between the earliest and latest attempts (window functions), plus the latest 30 scores and the questions never answered, in one round trip. The trend (last 5 attempts compared with the 5 before), the weakest and most improved topics are derived from these in `src/lib/progress.ts`.
 5. **Progress agent:** an endpoint that loads the user's recent attempts (with the SQL aggregates) and asks the model for a progress report: what improved, recurring gaps, and which questions to practice next. Cache the report in `progress_reports` and regenerate it only after new attempts, to control cost.
 6. **Adaptive question picking:** favor weak topics and questions not yet answered, instead of picking uniformly at random.
-7. **Progress dashboard:** a `/progress` page with score over time, per-topic breakdown, and the latest agent report.
+7. **Progress dashboard (partly done):** the `/progress` page shows the score over time, the per-topic breakdown, topics to review and unanswered questions. The latest agent report will be added with step 5.
 8. **Privacy:** users can delete their history (a "delete my data" action). Keep a retention policy for stored transcripts, which are personal data (GDPR).
 
 ### Stage 2: Hardening and production readiness
