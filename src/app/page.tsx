@@ -4,6 +4,7 @@ import { useUser } from "@clerk/nextjs";
 import "regenerator-runtime/runtime";
 import React, { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import axios from "axios";
 import SpeechButton from "@/components/speech-button";
 import QuestionPicker from "@/components/question-picker";
@@ -112,6 +113,11 @@ export default function Home() {
 
         {attempts.length > 0 && (
           <div className="mt-6 p-4 rounded-lg">
+            <p className="text-center text-sm sm:text-base">
+              <Link href="/progress" className="underline underline-offset-4">
+                Zobacz swoje postępy →
+              </Link>
+            </p>
             <ResultList attempts={attempts} onDelete={deleteQuestion} />
           </div>
         )}
